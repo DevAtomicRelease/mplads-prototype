@@ -4,33 +4,37 @@ Complete local research project: reproducible features across the three supplied
 
 ## GitHub repository and first-time setup
 
-This repository contains source code, reproducible pipelines, tests and documentation. Raw workbooks, engineered records, Excel outputs, review databases, local hosting metadata and installed dependencies are deliberately **not committed**. The aggregate results below describe the separately verified local delivery; cloning this repository does not include those data files or the prebuilt application.
+This repository includes the three original datasets, final engineered CSV/JSON tables, final Excel workbook, offline A/B results, a ready-to-run local application, source code, tests and documentation. The owner explicitly authorized sharing these real-data artifacts on 7 September 2026, including publication while the repository is public. Changing visibility later cannot recall copies already downloaded.
 
-The existing MIT license applies to the source code. It does not grant rights to any separately supplied MPLADS data.
+Private review notes/databases, credentials, device-specific hosting settings, installed dependencies, duplicate rebuilds and obsolete exploratory outputs are not included. The existing MIT license applies to source code; inclusion of the supplied MPLADS records does not establish a separate data redistribution license or government endorsement.
 
-On Windows, use Python 3.11+ (tested with 3.12) and Node.js 24 LTS:
+For the quickest Windows setup, install Python 3.11+ (tested with 3.12) and select the installer's PATH option, then:
 
 ```powershell
 git clone https://github.com/DevAtomicRelease/mplads-prototype.git
 cd mplads-prototype
-python -m pip install -r pipeline_research/requirements-tested.txt
-npm --prefix mplads-prototype ci
+.\START_PROJECT.cmd
 ```
 
-Obtain the three workbooks through an authorized channel and place them under `Dataset/` at the repository root, retaining these exact names:
+The browser opens at http://127.0.0.1:8765/. The included build needs no Node.js, package installation or internet access to run. Alternatively, download the repository ZIP, extract it, and double-click `START_PROJECT.cmd`. Keep the complete folder structure. Use `STOP_PROJECT.cmd` when finished.
+
+The three unchanged workbooks are included under `Dataset/`:
 
 - `Works Sanctioned.xlsx`
 - `Allocated Limit for Honble MPs.xlsx`
 - `Amount consented for Calamity.xlsx`
 
-Then run the complete code/data rebuild without the optional bundled Excel authoring library:
+To verify the delivered file hashes without rebuilding, run `python scripts/verify_team_bundle.py`. To regenerate the code/data outputs, additionally install Node.js 24 LTS and run:
 
 ```powershell
+python -m pip install -r pipeline_research/requirements-tested.txt
+npm --prefix mplads-prototype ci
 powershell -NoProfile -File .\REBUILD_PROJECT.ps1 -SkipWorkbook
-.\START_PROJECT.cmd
 ```
 
-The browser opens at http://127.0.0.1:8765/. No cloud deployment or dataset download is configured. `REBUILD_PROJECT` checks this specific supplied extract's counts and source totals; a different extract requires an explicit data-contract review. The optional final Excel exporter and independent workbook verifier are included as source, but workbook generation additionally requires `@oai/artifact-tool` from the documented local runtime.
+No cloud deployment or automatic dataset upload is configured. `REBUILD_PROJECT` checks this specific supplied extract's counts and source totals; a different extract requires an explicit data-contract review. The optional final Excel exporter and independent workbook verifier are included as source, but workbook generation additionally requires `@oai/artifact-tool` from the documented local runtime. The supplied final workbook can be reviewed without that library.
+
+`TEAM_DATA_MANIFEST.json` records the released artifacts' sizes and SHA-256 hashes. Rebuilds intentionally change timestamps and may record a different local provenance path, so compare independent reruns with `validation_research/check_reproducibility.py` after rebuilding; the release manifest describes the frozen delivered files, not subsequent regenerated versions.
 
 The nested `mplads-prototype/` directory is the web app. The repository root also contains its connected data pipeline, A/B experiment and Windows launch controls; retain that structure. The original context file is historical background, with rule corrections documented in `mplads-prototype/SOLUTION_PLAN.md`.
 
@@ -47,14 +51,15 @@ The delivered static build needs only Python 3.11+ to run; it does not need Node
 | Final plain Excel workbook | `outputs/01a06d6b-9b94-7a61-b28b-6f9116f20942/MPLADS_Final_Core_Dataset_2026-09-06.xlsx` |
 | Architecture, research, limitations and rollout | `mplads-prototype/SOLUTION_PLAN.md` |
 | Final verification record | `DELIVERY_VERIFICATION.md` |
+| Released-file integrity manifest and verifier | `TEAM_DATA_MANIFEST.json`, `scripts/verify_team_bundle.py` |
 | All machine-readable feature tables and field dictionary | `pipeline_research/artifacts/` |
 | Raw-data pipeline and regression tests | `pipeline_research/build_features.py`, `test_pipeline.py` |
 | Offline A/B report, scores, benchmark and split manifest | `validation_research/` |
 | Rebuild equality and original-file hash checks | `validation_research/reproducibility_check.json` |
 | Local app source and service | `mplads-prototype/app/`, `lib/`, `scripts/serve_local.py` |
-| Local review history | `prototype-local-data/reviews.sqlite3` |
+| Your own local review history (created at runtime; not committed) | `prototype-local-data/reviews.sqlite3` |
 
-The final core dataset contains 10,000 works with 92 total fields, 543 MPs, 381 authorities, 12 calamity consents, 21,092 candidate pairs and 179 field/table definitions. Source totals reconcile and raw workbooks are unchanged. Earlier Excel files are retained as historical exploratory versions; use the **2026-09-06 core** file with this app.
+The final core dataset contains 10,000 works with 92 total fields, 543 MPs, 381 authorities, 12 calamity consents, 21,092 candidate pairs and 179 field/table definitions. Source totals reconcile and raw workbooks are unchanged. Earlier exploratory Excel versions are preserved only in the original local workspace, not this release; use the **2026-09-06 core** file with this app.
 
 ## A short investigation walkthrough
 
@@ -89,7 +94,7 @@ On a new machine, install Python dependencies from that requirements file and ru
 - Recommendation dates proxy IDA receipt. Sanction age proxies duration at the latest sanction date; progress-update dates and MCC exclusions are missing.
 - Scores and similar descriptions request investigation. They are not findings of misuse, overpricing, duplicate assets or non-compliance.
 - Local review history records a version and source fingerprints. It is application-append-only, not tamper-proof, authenticated or shared across officers. Protect the device and back up the whole project while the service is stopped.
-- Source/derived data and notes remain local. Only the audited source code and documentation are published to GitHub; raw and derived records, review notes, hosting metadata and generated artifacts are excluded. No hosting deployment, analytics or external font requests are used. Early scaffold hosting metadata is inactive; it is not an instruction or authorization to deploy.
+- The owner-authorized repository release includes the supplied source/derived datasets and selected final artifacts. Repository access controls who can download them; a public repository makes them available to everyone. App processing and newly created review notes stay on each user's computer, and review stores remain excluded from Git. No hosting deployment, analytics or external font requests are used. Early scaffold hosting metadata is inactive and excluded; it is not authorization to deploy.
 
 Before government use: obtain authorized complete sources, approve effective rule versions, add identity/role scopes, secure storage and recovery, run independent adjudication and conduct the prospective trial in the solution plan.
 

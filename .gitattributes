@@ -4,3 +4,13 @@
 *.png binary
 *.jpg binary
 *.jpeg binary
+*.xlsx binary
+*.xls binary
+
+# Preserve released data, validation evidence and built assets byte for byte.
+pipeline_research/artifacts/** -text -whitespace
+pipeline_research/workbook/verification.json -text -whitespace
+validation_research/*.csv -text -whitespace
+validation_research/*.json -text -whitespace
+validation_research/AB_Validation_Report.md -text -whitespace
+mplads-prototype/dist/local/** -text -whitespace

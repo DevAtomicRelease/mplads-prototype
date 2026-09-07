@@ -35,10 +35,18 @@ Verified on 6 September 2026. Local application: http://127.0.0.1:8765/
 - No national completeness, expenditure utilization, measured cost overruns, verified duplicate assets or automatic compliance findings.
 - No authenticated government deployment, real-time source integration, multi-officer authorization or tamper-proof official audit trail. These are documented rollout gates.
 - No automated browser click-through or visual acceptance of the web app. The user was offered that optional test; current web evidence consists of implementation inspection, automated logic/service checks, compilation and HTTP verification. The Excel workbook was rendered and visually reviewed on every sheet.
-- No raw-data mutation, external publication or deployment. The complete data and review store remain local.
+- At the original 6 September verification, no raw-data mutation, external publication or deployment had occurred. The later owner-authorized repository distribution is described below; the private review store remains excluded.
 
 ## Reproduction
 
 Use `REBUILD_PROJECT.cmd` for the full packaged workflow. Use `-SkipWorkbook` for the verified code/data workflow without Excel regeneration. Run `pipeline_research/workbook/verify_workbook.py` with openpyxl available to repeat the exhaustive Excel comparison. Run `mplads-prototype/scripts/verify_delivery.py` against the running service for final read-only HTTP and source-boundary checks.
 
 Core runtime verified: Python 3.12.14, NumPy 2.3.5, pandas 3.0.1; local app built with Node 24.19.0 and Vite 8.2.2. The lockfile pins application dependencies. Pipeline and A/B seeds are 26102.
+
+## Team distribution - 7 September 2026
+
+The owner explicitly authorized including real data and final outputs in the GitHub repository while it is public, with a possible later visibility change. The selected release contains the three unchanged source workbooks, nine canonical feature/audit outputs, final Excel workbook and its verification, offline A/B scores/benchmark/split/metrics/reproducibility evidence, and the local static app. Source code, tests, PS/context and architecture were already included.
+
+Review databases/notes, credentials, inactive hosting metadata, installed dependencies, logs, repeated rebuilds, inspection dumps and older exploratory workbooks are excluded. `TEAM_DATA_MANIFEST.json` and `scripts/verify_team_bundle.py` provide a portable, standard-library-only integrity check for the frozen release. Git attributes preserve source and generated artifact bytes across Windows and other checkouts. Runtime remains loopback-only; this is repository distribution, not a hosted application or a live A/B trial.
+
+A clean export of the selected Git tree passed all 24 artifact hash/size checks (51,107,283 bytes), original source and A/B lineage checks, and the 19 local HTTP/asset checks. The final Excel download matched its on-disk SHA-256 and the fresh review store was empty. The exported files contained none of the excluded private paths and no matches for the checked credential patterns; this is a bounded publication check, not a security certification. No source records or validation results were regenerated for this release.

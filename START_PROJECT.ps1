@@ -28,5 +28,5 @@ if ($existingHealth -and $existingHealth.application -eq 'MPLADS Insight') {
     if (-not $ready) { throw 'Local service is not responding. Inspect prototype-local-data/server-errors.log.' }
     Write-Host "MPLADS Insight is ready at $projectUrl"
 }
-Write-Host 'Data and review notes remain on this computer. Use STOP_PROJECT.cmd to stop the service.'
+Write-Host 'The app processes data locally; your review notes stay on this computer. Use STOP_PROJECT.cmd to stop the service.'
 if (-not $NoBrowser) { Start-Process $projectUrl }

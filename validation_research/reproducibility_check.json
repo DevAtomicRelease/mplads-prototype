@@ -1,0 +1,23 @@
+{
+  "checks": {
+    "core_Calamity_Features.csv": true,
+    "core_Duplicate_Candidates.csv": true,
+    "core_Feature_Dictionary.csv": true,
+    "core_IDA_Features.csv": true,
+    "core_MP_Features.csv": true,
+    "core_Work_Features.csv": true,
+    "core_snapshot_except_generation_timestamp": true,
+    "ab_metrics.json": true,
+    "ab_actual_test_scores.csv": true,
+    "ab_controlled_benchmark.csv": true,
+    "ab_split_manifest.csv": true,
+    "ab_AB_Validation_Report.md": true,
+    "raw_works_unchanged": true,
+    "raw_allocations_unchanged": true,
+    "raw_consents_unchanged": true
+  },
+  "all_equal": true,
+  "note": "Core generation timestamp excluded; all data tables and features compared. A/B outputs compared byte for byte.",
+  "core_snapshot_sha256": "b874687cfc0211ab0f5323f0e26ab5ff38f82437fd24cada9ba3d9e5ae5c9bbe",
+  "ab_metrics_sha256": "6b7bc5faf86701b8abee2fbac8b1da8e305876ba8b54d2a5a92c4d2f778f30e6"
+}

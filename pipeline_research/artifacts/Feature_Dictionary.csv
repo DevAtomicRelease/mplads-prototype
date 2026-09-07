@@ -1,0 +1,180 @@
+﻿table,field,dtype,definition,availability_and_caution
+Work_Features,source_row_number,int64,"Sequential row number supplied by the source export, excluding headers and Grand Total.",Source snapshot; evidence
+Work_Features,source_worksheet_row,int64,"Original physical worksheet row, with title/header rows counted. Used to trace evidence directly to the supplied source.","Provenance; identifier, exclude from model"
+Work_Features,work_category,str,Source category: Normal/Others or Trust and Society. This is not an asset sector.,Source snapshot; evidence
+Work_Features,work_reference,str,"Unmodified reference from Works Sanctioned column C, containing MP code, reference financial year, work ID and type.",Source snapshot; evidence
+Work_Features,state,str,Work's state label from Works Sanctioned column D.,Source snapshot; evidence
+Work_Features,ida_source,str,Full implementing district authority label from Works Sanctioned column E.,Source snapshot; evidence
+Work_Features,mp_name,str,MP name as written in the relevant source worksheet. It is retained alongside the normalized join key.,Source snapshot; evidence
+Work_Features,constituency,str,Constituency label from Works Sanctioned column G.,Source snapshot; evidence
+Work_Features,work_description,str,Unmodified source work description from Works Sanctioned column H.,Source snapshot; evidence
+Work_Features,recommended_date,datetime64[us],Parsed dd-Mon-yyyy source date in Works Sanctioned column I. IDA receipt time is not supplied.,Source snapshot; evidence
+Work_Features,sanction_date,datetime64[us],Parsed dd-Mon-yyyy source date in Works Sanctioned column J.,Source snapshot; evidence
+Work_Features,sanction_amount,float64,Source sanctioned amount in INR from Works Sanctioned column K. It is not recorded expenditure.,Source snapshot; evidence
+Work_Features,work_status,str,Current source status from Works Sanctioned column L; no timestamp of last status update is supplied.,Source snapshot; evidence
+Work_Features,mp_code,Int64,"MP code parsed from work reference. Identifier, not a continuous numeric predictor.",Identifier; exclude from model
+Work_Features,work_fiscal_year,str,"YYYY-YYYY financial-year token parsed from the work reference, retained separately from the date-derived sanction FY.",Source-derived snapshot; recompute features in historical folds
+Work_Features,work_id,Int64,Work identifier parsed from WS/MP.../financial-year/work-id-type reference. Stored as an identifier and never treated as a numeric predictive signal.,Identifier; exclude from model
+Work_Features,work_type,str,Text following the numeric work ID and hyphen in the source work reference; Unparsed if reference does not match.,Source-derived snapshot; recompute features in historical folds
+Work_Features,mp_name_key,str,"Deterministic normalized join key; names use Unicode NFKC/case folding, honorific-prefix removal and punctuation/space removal. IDA key includes state. Ambiguous MP keys stop the build.",Join identifier; exclude as continuous predictor
+Work_Features,ida_key,str,"Deterministic normalized join key; names use Unicode NFKC/case folding, honorific-prefix removal and punctuation/space removal. IDA key includes state. Ambiguous MP keys stop the build.",Join identifier; exclude as continuous predictor
+Work_Features,ida_district,object,"Trimmed text before the first opening parenthesis in the full IDA source label. This is a parsed label, not a district-code crosswalk.",Source-derived snapshot; recompute features in historical folds
+Work_Features,ida_authority,str,"Text inside IDA parentheses, with trailing _IDA removed. It identifies an authority, not an executing vendor.",Source-derived snapshot; recompute features in historical folds
+Work_Features,constituency_reservation,str,SC or ST only if present in parentheses in the constituency label; otherwise Unspecified. Does not identify work beneficiary category.,Source-derived snapshot; recompute features in historical folds
+Work_Features,mp_state,str,"MP state from the allocation master, joined by normalized MP name.",Source snapshot; evidence
+Work_Features,mp_constituency,str,"MP constituency from the allocation master, joined by normalized MP name.",Source snapshot; evidence
+Work_Features,mp_allocated_limit,float64,Recorded allocation amount in source export. One source value is missing and remains null. Period and carry-forward composition are unspecified.,Source snapshot; not annual entitlement
+Work_Features,allocation_amount_missing_flag,bool,True when the source allocation amount is blank or cannot be parsed as numeric. No zero imputation is made.,Source-derived snapshot; recompute features in historical folds
+Work_Features,allocation_join_status,str,Matched if the normalized work MP name equals one unique allocation-master key; Unmatched otherwise.,Source-derived snapshot; recompute features in historical folds
+Work_Features,state_mp_mismatch_flag,bool,Normalized work state differs from normalized allocation-master MP state. Context only: permissible out-of-area exceptions may apply.,Source-derived snapshot; recompute features in historical folds
+Work_Features,sanction_fiscal_year,str,India financial year (1 April to 31 March) containing the sanction date.,Source-derived snapshot; recompute features in historical folds
+Work_Features,recommended_fiscal_year,str,India financial year (1 April to 31 March) containing the recommendation date.,Source-derived snapshot; recompute features in historical folds
+Work_Features,sanction_delay_days,int64,"Sanction date minus supplied recommendation date, in calendar days. Recommendation date is an unverified proxy for IDA receipt date.",Available at sanction; receipt/MCC caveat
+Work_Features,potential_sla_over_45_flag,bool,Calendar-day proxy delay greater than 45. No IDA-receipt timestamp or MCC exclusions supplied; investigate before compliance conclusion.,Available at sanction; proxy rule
+Work_Features,sanction_delay_over_180_flag,bool,Recommendation-to-sanction calendar-day proxy exceeds 180. This is an analytic screening cutoff.,Source-derived snapshot; recompute features in historical folds
+Work_Features,snapshot_proxy_date,datetime64[us],"Maximum nonmissing sanction date in the supplied works extract. It is a reproducible proxy, not certified export time.",Source-derived snapshot; recompute features in historical folds
+Work_Features,age_days_at_snapshot_proxy,int64,Snapshot proxy date minus sanction date in calendar days; does not measure time since last progress update.,Source-derived snapshot; recompute features in historical folds
+Work_Features,status_stage,str,"Mapping: Sanction=Sanctioned, Vendor Identification=Procurement, Time Estimation=Planning, Work partially Completed=Execution, Physical Inspection=Verification, Work Completed=Completed; otherwise Unknown.",Source-derived snapshot; recompute features in historical folds
+Work_Features,early_stage_flag,bool,"True for current source status Sanction, Vendor Identification or Time Estimation.",Source-derived snapshot; recompute features in historical folds
+Work_Features,early_stage_age_over_180_flag,bool,"Latest observed sanction date minus this sanction date exceeds 180, and current status is Sanction, Vendor Identification or Time Estimation.",Current status at snapshot only; 180 days is screening threshold
+Work_Features,completed_status_flag,bool,True only when current source status is exactly Work Completed; completion date and certificate are absent.,Source-derived snapshot; recompute features in historical folds
+Work_Features,sanction_month,int32,"Calendar month of sanction, January=1 through December=12.",Source-derived snapshot; recompute features in historical folds
+Work_Features,sanction_fy_quarter,Int64,"Financial-year quarter containing sanction: April-June=1, July-September=2, October-December=3, January-March=4.",Source-derived snapshot; recompute features in historical folds
+Work_Features,sanction_in_fy_last_30d_flag,bool,"Sanction date is March 2 through March 31 inclusive, the final 30 calendar days of its FY.",Source-derived snapshot; recompute features in historical folds
+Work_Features,description_normalized,str,Unicode NFKC and casefold; punctuation/underscores become spaces; repeated whitespace collapses. Original text remains separate.,Source-derived snapshot; recompute features in historical folds
+Work_Features,description_word_count,int64,Count of whitespace-delimited tokens in the normalized description.,Source-derived snapshot; recompute features in historical folds
+Work_Features,description_char_count,int64,"Character count of normalized description, including normalized spaces.",Source-derived snapshot; recompute features in historical folds
+Work_Features,description_digit_count,int64,"Number of individual digit characters in normalized description, not number of quantities or locations.",Source-derived snapshot; recompute features in historical folds
+Work_Features,description_continuation_flag,bool,"Normalized description contains a word starting continu, or phase, part, balance or remaining; possible legitimate continuation context.",Source-derived snapshot; recompute features in historical folds
+Work_Features,description_low_information_flag,bool,"Normalized description contains fewer than six words, a screening heuristic.",Source-derived snapshot; recompute features in historical folds
+Work_Features,source_text_replacement_character_flag,bool,"Raw work reference/description contains U+FFFD replacement character, indicating source text may be damaged.",Source quality
+Work_Features,sanction_amount_lakh,float64,"Sanctioned amount in INR divided by 100,000.",Source-derived snapshot; recompute features in historical folds
+Work_Features,amount_log1p,float64,Natural logarithm of (1 + sanctioned amount) for nonnegative amounts; otherwise null.,Source-derived snapshot; recompute features in historical folds
+Work_Features,amount_multiple_100k_flag,bool,"Nonmissing sanctioned amount is an exact multiple of ₹100,000. Repeated/rounded grants may be legitimate.",Source-derived snapshot; recompute features in historical folds
+Work_Features,same_amount_mp_frequency,Int64,Count of visible works with exactly the same normalized MP key and numeric sanctioned amount.,Source-derived snapshot; recompute features in historical folds
+Work_Features,sanction_batch_size_mp_date,Int64,"Number of visible works with the same normalized MP key and sanction calendar date, including current work.",Source-derived snapshot; recompute features in historical folds
+Work_Features,sanction_batch_total_mp_date,float64,"Sum of known sanctioned amounts for the same normalized MP and sanction date, including current work; null if all amounts missing.",Source-derived snapshot; recompute features in historical folds
+Work_Features,mp_prior_work_count,Int64,Visible work count with sanction date strictly before the current sanction date.,"Strictly before sanction date, observed extract only"
+Work_Features,mp_prior_sanction_total,float64,Visible sanctioned amount with date strictly before current date. Zero only when no historical row is observed.,"Strictly before sanction date, observed extract only"
+Work_Features,mp_previous_sanction_date,datetime64[us],Latest visible sanction date strictly earlier than current date.,"Strictly before sanction date, observed extract only"
+Work_Features,mp_days_since_previous_sanction,float64,"Current sanction date minus latest strictly earlier visible sanction date, null if none.","Strictly before sanction date, observed extract only"
+Work_Features,mp_prior90d_work_count,int64,"Visible sanction count in [current sanction date - 90 days, current sanction date).","Strictly before sanction date, observed extract only"
+Work_Features,ida_prior_work_count,Int64,Visible work count with sanction date strictly before the current sanction date.,"Strictly before sanction date, observed extract only"
+Work_Features,ida_prior_sanction_total,float64,Visible sanctioned amount with date strictly before current date. Zero only when no historical row is observed.,"Strictly before sanction date, observed extract only"
+Work_Features,ida_previous_sanction_date,datetime64[us],Latest visible sanction date strictly earlier than current date.,"Strictly before sanction date, observed extract only"
+Work_Features,ida_days_since_previous_sanction,float64,"Current sanction date minus latest strictly earlier visible sanction date, null if none.","Strictly before sanction date, observed extract only"
+Work_Features,ida_prior90d_work_count,int64,"Visible sanction count in [current sanction date - 90 days, current sanction date).","Strictly before sanction date, observed extract only"
+Work_Features,peer_group_level,str,"First group with at least ten other positive amounts: same state and work type, then same work type, then all works as final fallback.",Source-derived snapshot; recompute features in historical folds
+Work_Features,peer_count,float64,"Number of positive nonmissing amounts in selected state/type, type or global peer group, excluding the current row. Prefer at least 10 peers.",Snapshot peers; current row excluded
+Work_Features,peer_median_amount,float64,Median positive nonmissing sanctioned amount in selected peer group after current row is removed.,Source-derived snapshot; recompute features in historical folds
+Work_Features,peer_scale_method,str,"Indicates whether robust monetary scale uses 1.4826*MAD, IQR/1.349 or max(10% median, ₹1) for degenerate peers.",Source-derived snapshot; recompute features in historical folds
+Work_Features,peer_robust_z,float64,"(Amount - peer median) / robust scale. Scale is 1.4826 MAD, then IQR/1.349 if MAD zero, then max(10% median, ₹1) for degenerate peers.",Snapshot peers; current row excluded
+Work_Features,amount_to_peer_median_ratio,float64,Current sanctioned amount divided by leave-current-row-out peer median; null when denominator/input unavailable.,Source-derived snapshot; recompute features in historical folds
+Work_Features,high_cost_outlier_flag,object,Positive sanctioned amount exceeds leave-current-row-out peer median by at least 2 times and robust z exceeds 3.5. No quantity/unit-cost or revised estimate is supplied.,Snapshot peers; recompute within training folds
+Work_Features,nearest_description_work_id,float64,Highest-similarity other work among examined blocked pairs; null if no pair examined for this work. Not a global nearest neighbor.,Source-derived snapshot; recompute features in historical folds
+Work_Features,nearest_description_similarity,float64,"Similarity to best examined blocked neighbor, which may be below candidate threshold; null if no neighbor examined.",Source-derived snapshot; recompute features in historical folds
+Work_Features,duplicate_candidate_count,int64,Number of retained examined pairs containing this work with similarity at least 0.84.,Source-derived snapshot; recompute features in historical folds
+Work_Features,near_duplicate_review_flag,bool,At least one examined pair involving the work meets similarity >=0.84. Does not establish duplicate funding.,Source-derived snapshot; recompute features in historical folds
+Work_Features,duplicate_evidence_strength,str,"Maximum retained pair evidence: Strong, Moderate, Weak, None. Strong requires >=0.96, same IDA, amount and sanction date, with no number conflict, generic description or continuation cue. Moderate requires >=0.90 and same IDA without number conflict.",Source-derived snapshot; recompute features in historical folds
+Work_Features,mp_calamity_consent_count,int64,mp calamity consent count; observed supplied extract only.,Snapshot descriptive
+Work_Features,mp_calamity_consent_total,float64,"Total nonmissing consent amount recorded for joined MP. Zero means no row observed in this consent extract, not proof of no consent.",Snapshot descriptive; not payment or expenditure
+Work_Features,mp_latest_calamity_consent_date,datetime64[us],Latest consent date observed for the normalized MP in the consent extract; null if no consent row is observed.,Source-derived snapshot; recompute features in historical folds
+Work_Features,mp_trust_fy_visible_total,float64,Visible Trust and Society sanctions for normalized MP and sanction financial year. Incomplete sanctions are only a proxy for annual recommendations.,Snapshot descriptive; proxy rule
+Work_Features,potential_trust_annual_limit_flag,bool,Visible trust/society sanctions in MP/sanction-FY exceed ₹50 lakh. Sanctions are a proxy for recommendations; legal verification requires complete recommendation history.,Snapshot descriptive; proxy rule
+Work_Features,work_amount_share_of_allocation,float64,Individual visible sanctioned amount divided by positive allocation-master limit; null for missing/nonpositive limit. Denominator period is unknown.,Source-derived snapshot; recompute features in historical folds
+Work_Features,isolation_forest_score,float64,"2 to power minus mean isolation path divided by c(sample size), 100 trees, 256-row subsamples, seed 26102; continuous unsupervised atypicality score.",Fit on full snapshot; not held-out evaluation
+Work_Features,isolation_forest_percentile,float64,"Average-tie percentile rank of isolation score in this snapshot, multiplied by 100.",Fit on full snapshot; not held-out evaluation
+Work_Features,review_priority_score,int64,"Capped 0-100 sum of documented rule contributions. Screening priority, never a probability or confirmed fraud outcome.","Snapshot descriptive; derived target, exclude from predictor inputs"
+Work_Features,review_priority_band,str,"High for score >=65; Medium >=40; Low >=20; Routine below20. Fixed investigation workload labels, not measured probabilities.",Source-derived snapshot; recompute features in historical folds
+Work_Features,review_reason_codes,str,Semicolon-separated rule codes contributing positive weight to this work's priority.,Source-derived snapshot; recompute features in historical folds
+Work_Features,review_score_contributions_json,str,JSON mapping each triggered rule code to its score points. Sum is capped at100 to reproduce review_priority_score.,Source-derived snapshot; recompute features in historical folds
+Work_Features,required_feature_input_missing_count,int64,"Number of nulls among parsed work ID, recommendation date, sanction date, amount, normalized MP key and normalized IDA key.",Source-derived snapshot; recompute features in historical folds
+Work_Features,invalid_date_order_flag,bool,Sanction date precedes supplied recommendation date.,Source-derived snapshot; recompute features in historical folds
+Work_Features,source_work_id_duplicate_flag,bool,Parsed work ID occurs in more than one source work row; all such rows are flagged.,Source-derived snapshot; recompute features in historical folds
+MP_Features,source_worksheet_row,int64,"Original physical worksheet row, with title/header rows counted. Used to trace evidence directly to the supplied source.","Provenance; identifier, exclude from model"
+MP_Features,mp_source_row_number,str,Sequential MP allocation row number supplied by the source export.,Source snapshot; evidence
+MP_Features,mp_state,str,"MP state from the allocation master, joined by normalized MP name.",Source snapshot; evidence
+MP_Features,mp_name,str,MP name as written in the relevant source worksheet. It is retained alongside the normalized join key.,Source snapshot; evidence
+MP_Features,mp_constituency,str,"MP constituency from the allocation master, joined by normalized MP name.",Source snapshot; evidence
+MP_Features,mp_allocated_limit,float64,Recorded allocation amount in source export. One source value is missing and remains null. Period and carry-forward composition are unspecified.,Source snapshot; not annual entitlement
+MP_Features,mp_name_key,str,"Deterministic normalized join key; names use Unicode NFKC/case folding, honorific-prefix removal and punctuation/space removal. IDA key includes state. Ambiguous MP keys stop the build.",Join identifier; exclude as continuous predictor
+MP_Features,allocation_amount_missing_flag,bool,True when the source allocation amount is blank or cannot be parsed as numeric. No zero imputation is made.,Source-derived snapshot; recompute features in historical folds
+MP_Features,mp_visible_work_count,int64,mp visible work count; observed supplied extract only.,Snapshot descriptive
+MP_Features,mp_visible_sanction_total,float64,mp visible sanction total; observed supplied extract only.,Snapshot descriptive
+MP_Features,mp_median_sanction_amount,float64,mp median sanction amount. See pipeline implementation for deterministic transformation and source mapping.,Source or snapshot descriptive
+MP_Features,mp_median_sanction_delay_days,float64,mp median sanction delay days. See pipeline implementation for deterministic transformation and source mapping.,Source or snapshot descriptive
+MP_Features,mp_delay_over45_share,float64,Proportion among this entity's visible work rows meeting delay over45. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+MP_Features,mp_early_stage_over180_share,float64,Proportion among this entity's visible work rows meeting early stage over180. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+MP_Features,mp_completed_share,float64,Proportion among this entity's visible work rows meeting completed. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+MP_Features,mp_high_cost_outlier_share,object,Proportion among this entity's visible work rows meeting high cost outlier. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+MP_Features,mp_duplicate_review_share,float64,Proportion among this entity's visible work rows meeting duplicate review. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+MP_Features,mp_average_review_priority_score,float64,mp average review priority score,"Strictly before sanction date, observed extract only"
+MP_Features,mp_max_review_priority_score,float64,mp max review priority score,"Strictly before sanction date, observed extract only"
+MP_Features,mp_latest_sanction_date,datetime64[us],mp latest sanction date. See pipeline implementation for deterministic transformation and source mapping.,Source or snapshot descriptive
+MP_Features,mp_distinct_work_type_count,float64,mp distinct work type count; observed supplied extract only.,Snapshot descriptive
+MP_Features,mp_work_type_hhi,float64,"Sum of squared visible work-count shares across work types, in [0,1]; high concentration alone is not misconduct.",Snapshot entity aggregate
+MP_Features,mp_review_priority_score,float64,mp review priority score,"Strictly before sanction date, observed extract only"
+MP_Features,mp_review_priority_band,str,mp review priority band,"Strictly before sanction date, observed extract only"
+MP_Features,works_extract_presence_flag,bool,Allocation-master MP has at least one joined row in the supplied works extract.,Source-derived snapshot; recompute features in historical folds
+MP_Features,observed_sanction_to_allocated_ratio,float64,"Visible sanctions / recorded allocation limit, whose period is unspecified. Expenditure, release and utilization are not measured.",Snapshot descriptive; incomplete numerator
+MP_Features,mp_calamity_consent_count,int64,mp calamity consent count; observed supplied extract only.,Snapshot descriptive
+MP_Features,mp_calamity_consent_total,float64,"Total nonmissing consent amount recorded for joined MP. Zero means no row observed in this consent extract, not proof of no consent.",Snapshot descriptive; not payment or expenditure
+MP_Features,mp_latest_calamity_consent_date,datetime64[us],Latest consent date observed for the normalized MP in the consent extract; null if no consent row is observed.,Source-derived snapshot; recompute features in historical folds
+IDA_Features,ida_key,str,"Deterministic normalized join key; names use Unicode NFKC/case folding, honorific-prefix removal and punctuation/space removal. IDA key includes state. Ambiguous MP keys stop the build.",Join identifier; exclude as continuous predictor
+IDA_Features,ida_visible_work_count,Int64,ida visible work count; observed supplied extract only.,Snapshot descriptive
+IDA_Features,ida_visible_sanction_total,float64,ida visible sanction total; observed supplied extract only.,Snapshot descriptive
+IDA_Features,ida_median_sanction_amount,float64,ida median sanction amount. See pipeline implementation for deterministic transformation and source mapping.,Source or snapshot descriptive
+IDA_Features,ida_median_sanction_delay_days,float64,ida median sanction delay days. See pipeline implementation for deterministic transformation and source mapping.,Source or snapshot descriptive
+IDA_Features,ida_delay_over45_share,float64,Proportion among this entity's visible work rows meeting delay over45. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+IDA_Features,ida_early_stage_over180_share,float64,Proportion among this entity's visible work rows meeting early stage over180. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+IDA_Features,ida_completed_share,float64,Proportion among this entity's visible work rows meeting completed. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+IDA_Features,ida_high_cost_outlier_share,object,Proportion among this entity's visible work rows meeting high cost outlier. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+IDA_Features,ida_duplicate_review_share,float64,Proportion among this entity's visible work rows meeting duplicate review. Entity with no observed works has null share.,Snapshot entity aggregate; recompute inside train folds
+IDA_Features,ida_average_review_priority_score,float64,ida average review priority score,"Strictly before sanction date, observed extract only"
+IDA_Features,ida_max_review_priority_score,int64,ida max review priority score,"Strictly before sanction date, observed extract only"
+IDA_Features,ida_latest_sanction_date,datetime64[us],ida latest sanction date. See pipeline implementation for deterministic transformation and source mapping.,Source or snapshot descriptive
+IDA_Features,ida_distinct_work_type_count,int64,ida distinct work type count; observed supplied extract only.,Snapshot descriptive
+IDA_Features,ida_work_type_hhi,float64,"Sum of squared visible work-count shares across work types, in [0,1]; high concentration alone is not misconduct.",Snapshot entity aggregate
+IDA_Features,ida_review_priority_score,float64,ida review priority score,"Strictly before sanction date, observed extract only"
+IDA_Features,ida_review_priority_band,str,ida review priority band,"Strictly before sanction date, observed extract only"
+IDA_Features,state,str,Work's state label from Works Sanctioned column D.,Source snapshot; evidence
+IDA_Features,ida_district,object,"Trimmed text before the first opening parenthesis in the full IDA source label. This is a parsed label, not a district-code crosswalk.",Source-derived snapshot; recompute features in historical folds
+IDA_Features,ida_authority,str,"Text inside IDA parentheses, with trailing _IDA removed. It identifies an authority, not an executing vendor.",Source-derived snapshot; recompute features in historical folds
+IDA_Features,ida_visible_mp_count,int64,ida visible mp count; observed supplied extract only.,Snapshot descriptive
+Calamity_Features,source_worksheet_row,int64,"Original physical worksheet row, with title/header rows counted. Used to trace evidence directly to the supplied source.","Provenance; identifier, exclude from model"
+Calamity_Features,source_row_number,str,"Sequential row number supplied by the source export, excluding headers and Grand Total.",Source snapshot; evidence
+Calamity_Features,calamity_type,str,Source category National Calamity or State Calamity; official declaration is not supplied.,Source snapshot; evidence
+Calamity_Features,calamity_name,str,Unmodified source event name from Amount consented for Calamity column C.,Source snapshot; evidence
+Calamity_Features,mp_name,str,MP name as written in the relevant source worksheet. It is retained alongside the normalized join key.,Source snapshot; evidence
+Calamity_Features,consent_date,datetime64[us],Parsed source consent date from Amount consented for Calamity column E.,Source snapshot; evidence
+Calamity_Features,consent_amount,int64,Source consent amount in INR from Amount consented for Calamity column F; not a payment or transfer confirmation.,Source snapshot; evidence
+Calamity_Features,mp_name_key,str,"Deterministic normalized join key; names use Unicode NFKC/case folding, honorific-prefix removal and punctuation/space removal. IDA key includes state. Ambiguous MP keys stop the build.",Join identifier; exclude as continuous predictor
+Calamity_Features,consent_fiscal_year,str,India financial year (April-March) containing consent date; explicit annual aggregation basis assumption.,Source-derived snapshot; recompute features in historical folds
+Calamity_Features,consent_calendar_year,int32,"Calendar year containing consent date, retained separately from consent financial year.",Source-derived snapshot; recompute features in historical folds
+Calamity_Features,mp_state,str,"MP state from the allocation master, joined by normalized MP name.",Source snapshot; evidence
+Calamity_Features,mp_constituency,str,"MP constituency from the allocation master, joined by normalized MP name.",Source snapshot; evidence
+Calamity_Features,mp_allocated_limit,float64,Recorded allocation amount in source export. One source value is missing and remains null. Period and carry-forward composition are unspecified.,Source snapshot; not annual entitlement
+Calamity_Features,mp_join_status,str,Matched if the normalized consent MP name equals one unique allocation-master key; Unmatched otherwise.,Source-derived snapshot; recompute features in historical folds
+Calamity_Features,rule_limit,int64,"₹10,000,000 for National Calamity and ₹2,500,000 for State Calamity; null for unknown source type. Eligibility must be verified separately.",Source-derived snapshot; recompute features in historical folds
+Calamity_Features,mp_fy_type_total,int64,"Sum of known consent amounts for same normalized MP, consent financial year and calamity type; null when all amounts missing.",Source-derived snapshot; recompute features in historical folds
+Calamity_Features,potential_limit_breach_flag,bool,"Consent sum grouped by MP, consent financial year and source calamity type exceeds ₹1 crore national / ₹25 lakh state. Financial year is an explicit annual-basis assumption.",Snapshot descriptive; rule proxy
+Calamity_Features,state_calamity_eligibility_check,str,"Not assessed because official declaration, affected-area jurisdiction and MP chamber are not available in the three inputs.",Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,work_id_a,int64,Parsed ID of first work in this unordered candidate pair.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,work_id_b,int64,Parsed ID of second work in this unordered candidate pair; different from work_id_a.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,similarity,float64,0.65 times IDF-weighted informative-token Jaccard plus0.35 times character-trigram Dice; exact nonempty normalized text is1. Stored pairs meet >=0.84.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,evidence_strength,str,"Strong: similarity>=0.96, same IDA/amount/date, no number-token conflict, neither generic nor continuation. Moderate: similarity>=0.90, same IDA, no number conflict. Remaining candidates Weak.",Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,exact_description_flag,bool,Nonempty normalized descriptions are exactly equal.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,same_ida_flag,bool,Both work rows have the same normalized state-and-IDA key.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,same_mp_flag,bool,Both work rows have the same normalized MP-name key.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,same_amount_flag,bool,Both candidate amounts are nonmissing and numerically equal.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,same_sanction_date_flag,bool,Both candidate sanction dates are nonmissing and equal.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,number_token_conflict_flag,bool,Both descriptions contain number tokens and the number-token sets differ. Possible location/quantity difference requiring review.,Snapshot duplicate context
+Duplicate_Candidates,generic_description_flag,bool,Either description contains fewer than four distinct informative tokens after declared stop-word removal.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,continuation_or_phase_flag,bool,Either description has a continuation/phase cue; potential legitimate staged work.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,state,str,Work's state label from Works Sanctioned column D.,Source snapshot; evidence
+Duplicate_Candidates,description_a,str,Unmodified description of work_id_a.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,description_b,str,Unmodified description of work_id_b.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,sanction_amount_a,float64,Source sanctioned amount in INR for work_id_a.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,sanction_amount_b,float64,Source sanctioned amount in INR for work_id_b.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,sanction_date_a,datetime64[us],Source sanction date for work_id_a.,Source-derived snapshot; recompute features in historical folds
+Duplicate_Candidates,sanction_date_b,datetime64[us],Source sanction date for work_id_b.,Source-derived snapshot; recompute features in historical folds

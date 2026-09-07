@@ -44,7 +44,7 @@ Same raw-derived work fields
 
 There is one row per work ID. MP and IDA joins are many-to-one. Calamity consents remain MP-level context; no source work-level funding relation is invented. Candidate pairs are a separate edge table. Joining either child table directly into a financial aggregation would multiply amounts and is explicitly avoided.
 
-The browser receives real data only from the local service. Real records are not bundled into application assets. The service listens only on loopback and rejects external Host headers and non-local write origins. There are no analytics or external font requests. The GitHub repository contains the audited source code and documentation only. No hosting deployment or publication of raw/derived records or review notes is authorized or configured. Early scaffold registration metadata is inert and does not authorize deployment.
+The browser receives real data only from the local service. Real records are not bundled into application assets. The service listens only on loopback and rejects external Host headers and non-local write origins. There are no analytics or external font requests. On 7 September 2026, the owner explicitly authorized publishing the three raw datasets, final derived tables/workbook, validation evidence and ready-to-run local build to GitHub, including while the repository is public. Private review notes, credentials and machine-specific hosting metadata remain excluded. This repository distribution is separate from runtime hosting: no live website deployment is configured or authorized. Early scaffold registration metadata is inert and does not authorize deployment.
 
 Review saves use parameterized SQLite transactions with append-only application history. Each save stores record key, disposition, note, timestamp and dataset version. This is a single-user local store, not a tamper-proof official audit system and not authenticated officer attribution. Keep the entire project and local review database under appropriate device access controls.
 
@@ -61,7 +61,7 @@ Read the PS and context first; treat the context as background rather than autho
 7. Apply the versioned explainable rule registry. Every score decomposes into its stored reason codes. Preserve MP/IDA and consent tables with null-aware aggregation.
 8. Export all tables, field-level definitions, QA report and source hashes. Rebuild independently and compare outputs.
 
-Core version: `core-2026-09-06-v1`. This supersedes the earlier exploratory workbook for application use. The earlier workbook remains preserved; its 121 fields and older scores are not mixed with the current 92-field work table. The independent A/B methods also have distinct scores.
+Core version: `core-2026-09-06-v1`. This supersedes the earlier exploratory workbook for application use. The earlier workbook remains preserved only in the original local workspace, not the team release; its 121 fields and older scores are not mixed with the current 92-field work table. The independent A/B methods also have distinct scores.
 
 ## Reconciled current output
 

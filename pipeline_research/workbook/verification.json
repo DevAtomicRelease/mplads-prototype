@@ -1,0 +1,39 @@
+{
+  "workbook": "MPLADS_Final_Core_Dataset_2026-09-06.xlsx",
+  "checks": {
+    "Work_Features": {
+      "rows": 10000,
+      "columns": 92,
+      "all_values_match": true
+    },
+    "MP_Features": {
+      "rows": 543,
+      "columns": 29,
+      "all_values_match": true
+    },
+    "IDA_Features": {
+      "rows": 381,
+      "columns": 21,
+      "all_values_match": true
+    },
+    "Calamity_Features": {
+      "rows": 12,
+      "columns": 18,
+      "all_values_match": true
+    },
+    "Duplicate_Candidates": {
+      "rows": 21092,
+      "columns": 19,
+      "all_values_match": true
+    },
+    "Feature_Dictionary": {
+      "rows": 179,
+      "columns": 5,
+      "all_values_match": true
+    },
+    "summary_cached_totals": true,
+    "headers_and_identifier_frozen": true,
+    "six_filterable_tables": true
+  },
+  "all_passed": true
+}
