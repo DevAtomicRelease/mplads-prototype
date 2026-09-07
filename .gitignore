@@ -1,0 +1,46 @@
+# Local-only data and investigations. Do not publish without authorization.
+Dataset/
+outputs/
+prototype-local-data/
+pipeline_research/artifacts/
+pipeline_research/artifacts_reproduced/
+pipeline_research/workbook/node_modules/
+pipeline_research/workbook/*.png
+validation_research/*.csv
+validation_research/metrics.json
+validation_research/reproduced/
+**/__pycache__/
+
+# Never publish device-local hosting state, dependencies, build output or secrets.
+**/.openai/
+**/node_modules/
+**/dist/
+**/.next/
+**/.vinext/
+**/.wrangler/
+**/.venv/
+**/venv/
+**/.env
+**/.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+*.pyc
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Record-level outputs are regenerated on the authorized local machine.
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.parquet
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+validation_research/*.json
+pipeline_research/workbook/verification.json

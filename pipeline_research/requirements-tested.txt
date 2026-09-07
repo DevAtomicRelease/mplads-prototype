@@ -1,0 +1,5 @@
+# Exact versions used for the verified feature and A/B runs.
+numpy==2.3.5
+pandas==3.0.1
+# Optional independent final Excel verification (not raw ingest or app runtime).
+openpyxl==3.1.5
