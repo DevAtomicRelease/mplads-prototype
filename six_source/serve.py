@@ -134,6 +134,19 @@ class Handler(SimpleHTTPRequestHandler):
                     states=[r[0] for r in db.execute("SELECT DISTINCT state FROM Work_Features ORDER BY state")]
                     years=[r[0] for r in db.execute("SELECT DISTINCT sanction_fy FROM Work_Features WHERE sanction_fy IS NOT NULL ORDER BY sanction_fy")]
                     return self.reply({"states":states,"years":years})
+                if route=="/api/overview":
+                    metrics="COUNT(*) works, SUM(in_sanctioned) sanctioned, SUM(in_completed) completed, SUM(CASE WHEN priority_band='High' THEN 1 ELSE 0 END) high, SUM(open_over_one_year_flag) open_over_year, SUM(no_payment_three_months_flag) no_payment_3m, SUM(sanction_amount_paise) sanction_paise, SUM(successful_payment_paise) successful_payment_paise, SUM(pending_payment_paise) pending_payment_paise, AVG(priority_score) mean_priority"
+                    national=dict(db.execute(f"SELECT {metrics}, COUNT(DISTINCT mp_key) mp_count, COUNT(DISTINCT ida_key) ida_count FROM Work_Features").fetchone())
+                    cohorts=[dict(r) for r in db.execute(f"SELECT cohort, {metrics} FROM Work_Features GROUP BY cohort ORDER BY works DESC")]
+                    states=[dict(r) for r in db.execute(f"SELECT state, {metrics} FROM Work_Features GROUP BY state ORDER BY high DESC")]
+                    top_idas=[dict(r) for r in db.execute(f"SELECT ida_key, ida_name, state, {metrics} FROM Work_Features GROUP BY ida_key ORDER BY high DESC, sanction_paise DESC LIMIT 20")]
+                    payload={"national":national,"cohorts":cohorts,"states":states,"top_idas":top_idas}
+                    state=scalar(params,"state")
+                    if state:
+                        if len(state)>300:raise ValueError("Filter too long")
+                        payload["state"]=state
+                        payload["idas"]=[dict(r) for r in db.execute(f"SELECT ida_key, ida_name, state, {metrics} FROM Work_Features WHERE state=? GROUP BY ida_key ORDER BY high DESC, sanction_paise DESC",[state])]
+                    return self.reply(payload)
                 if route=="/api/works":
                     where,args=filters(params);size,offset=page(params)
                     sort=scalar(params,"sort","priority_score");order=scalar(params,"order","desc")

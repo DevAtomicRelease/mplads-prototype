@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Search, Download, ChevronLeft, ChevronRight, Database, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { Search, Download, ChevronLeft, ChevronRight, Database, ShieldCheck, ArrowUpRight, Building2, MapPin, TrendingUp } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -105,10 +106,41 @@ function Sources({meta}:{meta:Row}) {
   </>;
 }
 
+const COHORT_LABEL: Record<string,string> = {lok_sabha:'Lok Sabha', rs_sitting:'Rajya Sabha (sitting)', rs_retired:'Rajya Sabha (retired)'};
+const heat = (frac: number) => `hsl(${Math.round(12 + 96 * Math.max(0, 1 - frac / 0.09))} 82% ${Math.round(94 - 34 * Math.min(1, frac / 0.09))}%)`;
+
+function Overview({inspect}:{inspect:(key:string,value:string)=>void}) {
+  const [state,setState]=useState('');
+  const data=useData<Row>('/api/overview'+(state?`?state=${encodeURIComponent(state)}`:''));
+  const months=useData<Row>('/api/months');
+  const n=data.data?.national;
+  const settledFrac=(r:Row)=>r.sanction_paise>0?r.successful_payment_paise/r.sanction_paise:null;
+  const topStates=(data.data?.states||[]).slice(0,10).map((s:Row)=>({name:s.state.length>12?s.state.slice(0,11)+'…':s.state,High:s.high}));
+  const trend=(months.data?.items||[]).map((m:Row)=>({month:m.payment_month,Settled:Math.round(m.successful_payment_paise/1e7)/100}));
+  const d=data.data;const idas=state?d?.idas:d?.top_idas;
+  return <><div className="s6-section-head"><div><h1>Decision-support overview</h1><p>National, state and authority risk at a glance. Bands and counts are review signals, never findings of fraud.</p></div><DownloadLink file="audit.json">National audit</DownloadLink></div>
+    <Status error={data.error} loading={!n}/>{n&&<>
+    <div className="s6-kpis">{[['Connected works',count(n.works)],['High-priority reviews',count(n.high)],['Sanctioned',crore(n.sanction_paise)],['Settled (reported)',crore(n.successful_payment_paise)],['Settled / sanctioned',percent(settledFrac(n))],['Open beyond one year',count(n.open_over_year)],['Members with works',count(n.mp_count)],['District authorities',count(n.ida_count)]].map(([label,value])=><div key={label} className="s6-kpi"><span>{label}</span><strong>{value}</strong></div>)}</div>
+
+    <div className="s6-dash-cohorts">{(d!.cohorts||[]).map((c:Row)=><div key={c.cohort} className="s6-cohort"><header>{COHORT_LABEL[c.cohort]||c.cohort}</header><dl>{[['Works',count(c.works)],['High',count(c.high)],['Sanctioned',crore(c.sanction_paise)],['Settled/sanction',percent(settledFrac(c))]].map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></div>)}</div>
+
+    <div className="s6-dash-grid">
+      <section className="s6-panel"><h3><TrendingUp size={16}/> Top states by high-priority works</h3><div className="s6-chart"><ResponsiveContainer width="100%" height={220}><BarChart data={topStates} margin={{top:4,right:8,bottom:4,left:8}}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" tick={{fontSize:11}} interval={0} angle={-30} textAnchor="end" height={54}/><YAxis tick={{fontSize:11}} allowDecimals={false}/><Tooltip/><Bar dataKey="High" fill="#c0392b" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer></div></section>
+      <section className="s6-panel"><h3><TrendingUp size={16}/> Monthly settled payments (₹ cr)</h3><div className="s6-chart"><ResponsiveContainer width="100%" height={220}><LineChart data={trend} margin={{top:4,right:8,bottom:4,left:8}}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10}} interval={Math.ceil(trend.length/8)}/><YAxis tick={{fontSize:11}}/><Tooltip/><Line dataKey="Settled" stroke="#2563eb" dot={false} strokeWidth={2}/></LineChart></ResponsiveContainer></div><p className="s6-note">Reported settlement timing only; no waste is inferred from year-end spending.</p></section>
+    </div>
+
+    <section className="s6-panel"><h3><MapPin size={16}/> State risk heatmap</h3><p className="s6-note">Cell shade = share of works in the High band. Select a state to see its district authorities; use “Investigate” to open the filtered queue.</p>
+      <div className="s6-heatwrap"><Table className="s6-heat"><TableHeader><TableRow>{['State / UT','Works','High','High %','Open &gt;1yr','Sanctioned','Settled/sanction','Mean priority',''].map(h=><TableHead key={h}>{h.replace('&gt;','>')}</TableHead>)}</TableRow></TableHeader><TableBody>{d!.states.map((s:Row)=>{const f=s.high/s.works;return <TableRow key={s.state} className={state===s.state?'s6-row-active':''}><TableCell><button className="s6-text" onClick={()=>setState(state===s.state?'':s.state)}>{s.state}</button></TableCell><TableCell>{count(s.works)}</TableCell><TableCell>{count(s.high)}</TableCell><TableCell><span className="s6-heatcell" style={{background:heat(f)}}>{(f*100).toFixed(1)}%</span></TableCell><TableCell>{count(s.open_over_year)}</TableCell><TableCell>{crore(s.sanction_paise)}</TableCell><TableCell>{percent(settledFrac(s))}</TableCell><TableCell>{Number(s.mean_priority).toFixed(1)}</TableCell><TableCell><button onClick={()=>inspect('state',s.state)}>Investigate<ArrowUpRight size={13}/></button></TableCell></TableRow>})}</TableBody></Table></div></section>
+
+    <section className="s6-panel"><h3><Building2 size={16}/> {state?`District authorities · ${state}`:'Highest-risk district authorities (national top 20)'}</h3>{state&&<button className="s6-link" onClick={()=>setState('')}>Back to national top 20</button>}<Table><TableHeader><TableRow>{['Authority','State','Works','High','Open >1yr','Sanctioned','Settled','Investigate'].map(h=><TableHead key={h}>{h}</TableHead>)}</TableRow></TableHeader><TableBody>{(idas||[]).map((r:Row)=><TableRow key={r.ida_key}><TableCell>{r.ida_name}</TableCell><TableCell>{r.state}</TableCell><TableCell>{count(r.works)}</TableCell><TableCell>{count(r.high)}</TableCell><TableCell>{count(r.open_over_year)}</TableCell><TableCell>{crore(r.sanction_paise)}</TableCell><TableCell>{crore(r.successful_payment_paise)}</TableCell><TableCell><button onClick={()=>inspect('ida',r.ida_key)}>Works<ArrowUpRight size={13}/></button></TableCell></TableRow>)}</TableBody></Table></section>
+    </>}</>;
+}
+
 function App() {
-  const meta=useData<Row>('/api/meta');const [tab,setTab]=useState('works');const [selected,setSelected]=useState<string|null>(null);const [entity,setEntity]=useState<Row>({});
+  const meta=useData<Row>('/api/meta');const [tab,setTab]=useState('overview');const [selected,setSelected]=useState<string|null>(null);const [entity,setEntity]=useState<Row>({});
   function inspect(key:string,value:string){setEntity({[key]:value});setSelected(null);setTab('works')}
-  return <div className="s6-app"><header className="s6-header"><div><Database size={24}/><strong>MPLADS Insight</strong><span>PS 26102 · Six-source investigation</span></div><span><ShieldCheck size={17}/>Local processing</span></header><div className="s6-context">18th Lok Sabha · {meta.data?`${count(meta.data.totals.works)} connected works · as of ${meta.data.as_of}`:'Connecting to the local dataset'}<span>Review signals, not findings of fraud</span></div><Tabs value={tab} onValueChange={v=>setTab(String(v))}><TabsList className="s6-tabs">{[['works','Work investigation'],['entities','MPs, authorities & vendors'],['pairs','Similar works'],['validation','A/B validation'],['sources','Data & research']].map(([id,label])=><TabsTrigger key={id} value={id}>{label}</TabsTrigger>)}</TabsList><main className="s6-main"><Status error={meta.error} loading={!meta.data}/>{meta.data&&<>{tab==='works'&&<Queue open={setSelected} entity={entity} clearEntity={()=>setEntity({})}/>} {tab==='entities'&&<Entities inspect={inspect}/>} {tab==='pairs'&&<Pairs open={setSelected}/>} {tab==='validation'&&<Validation/>} {tab==='sources'&&<Sources meta={meta.data}/>}</>}</main></Tabs><footer className="s6-footer">Local research prototype · No officer authentication or official audit certification. <a href="/api/reviews" target="_blank" rel="noreferrer">Export local review history</a></footer><WorkEvidence id={selected} onClose={()=>setSelected(null)} onWork={setSelected} onEntity={inspect}/></div>;
+  const cohorts=(meta.data?.cohorts||[]).map((c:string)=>COHORT_LABEL[c]||c).join(' · ');
+  return <div className="s6-app"><header className="s6-header"><div><Database size={24}/><strong>MPLADS Insight</strong><span>PS 26102 · Six-source investigation</span></div><span><ShieldCheck size={17}/>Local processing</span></header><div className="s6-context">{cohorts||'MPLADS'} · {meta.data?`${count(meta.data.totals.works)} connected works · as of ${meta.data.as_of}`:'Connecting to the local dataset'}<span>Review signals, not findings of fraud</span></div><Tabs value={tab} onValueChange={v=>setTab(String(v))}><TabsList className="s6-tabs">{[['overview','Overview'],['works','Work investigation'],['entities','MPs, authorities & vendors'],['pairs','Similar works'],['validation','A/B validation'],['sources','Data & research']].map(([id,label])=><TabsTrigger key={id} value={id}>{label}</TabsTrigger>)}</TabsList><main className="s6-main"><Status error={meta.error} loading={!meta.data}/>{meta.data&&<>{tab==='overview'&&<Overview inspect={inspect}/>} {tab==='works'&&<Queue open={setSelected} entity={entity} clearEntity={()=>setEntity({})}/>} {tab==='entities'&&<Entities inspect={inspect}/>} {tab==='pairs'&&<Pairs open={setSelected}/>} {tab==='validation'&&<Validation/>} {tab==='sources'&&<Sources meta={meta.data}/>}</>}</main></Tabs><footer className="s6-footer">Local research prototype · No officer authentication or official audit certification. <a href="/api/reviews" target="_blank" rel="noreferrer">Export local review history</a></footer><WorkEvidence id={selected} onClose={()=>setSelected(null)} onWork={setSelected} onEntity={inspect}/></div>;
 }
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App/></StrictMode>);

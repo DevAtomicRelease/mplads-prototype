@@ -1,5 +1,6 @@
 import { defineConfig, mergeConfig } from 'vite';
-import base from './vite.config.ts';
+// eslint-disable-next-line -- vite loads this config; extension-less import keeps tsc happy
+import base from './vite.config';
 
 // Separate build/entrypoint keeps the previous three-source application intact.
 export default mergeConfig(base, defineConfig({
