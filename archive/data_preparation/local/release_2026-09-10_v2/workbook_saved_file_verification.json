@@ -1,0 +1,182 @@
+{
+  "workbook": "D:\\DEV\\projects\\PPS_1\\outputs\\ps26102-all-cohorts-20260910\\MPLADS_Data_Review.xlsx",
+  "sha256": "faeb1bfd974d04a4779e118fbcc19b4c5a1dbaf0e906f11a15cc05e755820648",
+  "data_cells_compared": 24178,
+  "checks_passed": 43,
+  "checks": [
+    {
+      "check": "Overview, row 6: 10 rows match prepared data",
+      "passed": true
+    },
+    {
+      "check": "Overview, row 20: 10 rows match prepared data",
+      "passed": true
+    },
+    {
+      "check": "MP terms, row 6: 1023 rows match prepared data",
+      "passed": true
+    },
+    {
+      "check": "Review sample, row 6: 1000 rows match prepared data",
+      "passed": true
+    },
+    {
+      "check": "Source audit, row 6: 18 rows match prepared data",
+      "passed": true
+    },
+    {
+      "check": "Source audit, row 28: 3 rows match prepared data",
+      "passed": true
+    },
+    {
+      "check": "Feature dictionary, row 6: 332 rows match prepared data",
+      "passed": true
+    },
+    {
+      "check": "Limits and sources, row 6: 11 rows match prepared data",
+      "passed": true
+    },
+    {
+      "check": "All six intended sheets; no empty default sheet",
+      "passed": true
+    },
+    {
+      "check": "Overview: gridlines hidden",
+      "passed": true
+    },
+    {
+      "check": "OverviewTable5: filter is saved",
+      "passed": true
+    },
+    {
+      "check": "OverviewTable19: filter is saved",
+      "passed": true
+    },
+    {
+      "check": "MP terms: gridlines hidden",
+      "passed": true
+    },
+    {
+      "check": "MPtermsTable5: filter is saved",
+      "passed": true
+    },
+    {
+      "check": "Review sample: gridlines hidden",
+      "passed": true
+    },
+    {
+      "check": "ReviewsampleTable5: filter is saved",
+      "passed": true
+    },
+    {
+      "check": "Source audit: gridlines hidden",
+      "passed": true
+    },
+    {
+      "check": "SourceauditTable5: filter is saved",
+      "passed": true
+    },
+    {
+      "check": "SourceauditTable27: filter is saved",
+      "passed": true
+    },
+    {
+      "check": "Feature dictionary: gridlines hidden",
+      "passed": true
+    },
+    {
+      "check": "FeaturedictionaryTable5: filter is saved",
+      "passed": true
+    },
+    {
+      "check": "Limits and sources: gridlines hidden",
+      "passed": true
+    },
+    {
+      "check": "LimitsandsourcesTable5: filter is saved",
+      "passed": true
+    },
+    {
+      "check": "MP terms: frozen identifiers/header retained",
+      "passed": true
+    },
+    {
+      "check": "Review sample: frozen identifiers/header retained",
+      "passed": true
+    },
+    {
+      "check": "Feature dictionary: frozen identifiers/header retained",
+      "passed": true
+    },
+    {
+      "check": "Source audit: frozen identifiers/header retained",
+      "passed": true
+    },
+    {
+      "check": "Dates are stored as sortable dates",
+      "passed": true
+    },
+    {
+      "check": "INR amounts display two decimal places",
+      "passed": true
+    },
+    {
+      "check": "Cohort total work_count has correct cached result",
+      "passed": true
+    },
+    {
+      "check": "Cohort total work_count remains a formula",
+      "passed": true
+    },
+    {
+      "check": "Cohort total recommended_record_count has correct cached result",
+      "passed": true
+    },
+    {
+      "check": "Cohort total recommended_record_count remains a formula",
+      "passed": true
+    },
+    {
+      "check": "Cohort total sanctioned_count has correct cached result",
+      "passed": true
+    },
+    {
+      "check": "Cohort total sanctioned_count remains a formula",
+      "passed": true
+    },
+    {
+      "check": "Cohort total completed_count has correct cached result",
+      "passed": true
+    },
+    {
+      "check": "Cohort total completed_count remains a formula",
+      "passed": true
+    },
+    {
+      "check": "Cohort total successful_payment_inr has correct cached result",
+      "passed": true
+    },
+    {
+      "check": "Cohort total successful_payment_inr remains a formula",
+      "passed": true
+    },
+    {
+      "check": "Cohort total pending_payment_inr has correct cached result",
+      "passed": true
+    },
+    {
+      "check": "Cohort total pending_payment_inr remains a formula",
+      "passed": true
+    },
+    {
+      "check": "No saved formula errors",
+      "passed": true
+    },
+    {
+      "check": "No source text converted to spreadsheet formulas",
+      "passed": true
+    }
+  ],
+  "native_excel_ui_tested": false,
+  "visual_review": "See workbook_verification.json and previews; this checker does not replace visual review."
+}

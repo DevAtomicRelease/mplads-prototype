@@ -72,3 +72,30 @@ outputs/01a06d6b-9b94-7a61-b28b-6f9116f20942/*
 !mplads-prototype/dist/
 mplads-prototype/dist/*
 !mplads-prototype/dist/local/
+
+# New six-source research is local pending separate publication authorization.
+data_preparation/local/
+data_preparation/reproduced/
+evaluation_18/local/
+evaluation_18/reproduced/
+evaluation_18/workbook/previews/
+data_preparation/workbook/previews/
+data_preparation/workbook/*.inspect.ndjson
+six_source/local/
+six_source/reproduced/
+six_source/workbook/node_modules/
+six_source/workbook/previews/
+six_source/workbook/*.inspect.ndjson
+mplads-prototype/dist/six/
+
+# New six-source research is local pending separate publication authorization.
+six_source/local/
+six_source/reproduced/
+six_source/workbook/node_modules/
+six_source/workbook/previews/
+six_source/workbook/*.inspect.ndjson
+mplads-prototype/dist/six/
+
+# Superseded heavy export artifacts — never publish
+archive/outputs/
+*.inspect.ndjson

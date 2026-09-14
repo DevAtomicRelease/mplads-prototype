@@ -1,0 +1,1004 @@
+{
+  "version": "all-cohorts-2026-09-10-v1",
+  "as_of": "2026-09-10",
+  "python": "3.12.14",
+  "pandas": "3.0.1",
+  "numpy": "2.3.5",
+  "inputs": [
+    {
+      "cohort": "Lok Sabha",
+      "kind": "allocations",
+      "source_file": "Lok Sabha/01_allocated_limit.csv",
+      "sha256": "da79d9fecefcff66670dd4b656f1d624b1feee0f2c5560800fd5b77bb14a696b",
+      "source_rows": 543,
+      "accepted_rows": 543,
+      "quarantined_rows": 0,
+      "column_count": 10
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "consents",
+      "source_file": "Lok Sabha/02_calamity_consent.csv",
+      "sha256": "c653f3d0ebde00baabbd9fa375f830dc9c6755a5462e838ecbf514a2d35da373",
+      "source_rows": 12,
+      "accepted_rows": 12,
+      "quarantined_rows": 0,
+      "column_count": 10
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "recommended",
+      "source_file": "Lok Sabha/03_works_recommended.csv",
+      "sha256": "f396f91ad15e0f63aae25e8171481e29007ad0c0632caed2cfd5b03c36e1c4a2",
+      "source_rows": 107562,
+      "accepted_rows": 107562,
+      "quarantined_rows": 0,
+      "column_count": 23
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "sanctioned",
+      "source_file": "Lok Sabha/04_works_sanctioned.csv",
+      "sha256": "8b31c7f7c335458719d8db447d5b53f407f72f66d56f434aaa7cff3a14c476d5",
+      "source_rows": 79881,
+      "accepted_rows": 79881,
+      "quarantined_rows": 0,
+      "column_count": 22
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "completed",
+      "source_file": "Lok Sabha/05_works_completed.csv",
+      "sha256": "458edd98ddc5b2c4b9b713aca5f81333661775758073d2827058db2621c96139",
+      "source_rows": 34940,
+      "accepted_rows": 34940,
+      "quarantined_rows": 0,
+      "column_count": 18
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "payments",
+      "source_file": "Lok Sabha/06_expenditure.csv",
+      "sha256": "bba2f79a9c5390a7e3a3ccada22282d3b223ea8f365991bbdd5a5b7a5637086f",
+      "source_rows": 57349,
+      "accepted_rows": 57348,
+      "quarantined_rows": 1,
+      "column_count": 19
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "allocations",
+      "source_file": "Rajya_Sabha_retired/01_allocated_limit.csv",
+      "sha256": "af5ded2439679419b9bb8f646864ef778c291888b585c1bf53e9774e8d7c6c04",
+      "source_rows": 248,
+      "accepted_rows": 248,
+      "quarantined_rows": 0,
+      "column_count": 10
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "consents",
+      "source_file": "Rajya_Sabha_retired/02_calamity_consent.csv",
+      "sha256": "ee931fe277645349f172ce6e344d6e94bcb937fbfbaa8f3c17a3d8151ee7b55a",
+      "source_rows": 1,
+      "accepted_rows": 1,
+      "quarantined_rows": 0,
+      "column_count": 10
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "recommended",
+      "source_file": "Rajya_Sabha_retired/03_works_recommended.csv",
+      "sha256": "92ce886b7d0a14c2518c6558c864a007a0f1f6919f5c07b9bdf3f825beb3721d",
+      "source_rows": 26863,
+      "accepted_rows": 26863,
+      "quarantined_rows": 0,
+      "column_count": 23
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "sanctioned",
+      "source_file": "Rajya_Sabha_retired/04_works_sanctioned.csv",
+      "sha256": "e7145deeb0b384c87921edf6b5f327047f9326976ccaed9eefa1630e47ae58e1",
+      "source_rows": 24524,
+      "accepted_rows": 24524,
+      "quarantined_rows": 0,
+      "column_count": 22
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "completed",
+      "source_file": "Rajya_Sabha_retired/05_works_completed.csv",
+      "sha256": "3f323198bdc3a7b3361cb8bfbb34f2c58ec45ccb7e3319713e3d839182965dd5",
+      "source_rows": 16282,
+      "accepted_rows": 16282,
+      "quarantined_rows": 0,
+      "column_count": 18
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "payments",
+      "source_file": "Rajya_Sabha_retired/06_expenditure.csv",
+      "sha256": "3b873f3dd0d6cd7b16254a5ffa1a3996a1103a4ec3a63d54ad63363fa298ccf3",
+      "source_rows": 30994,
+      "accepted_rows": 30994,
+      "quarantined_rows": 0,
+      "column_count": 19
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "allocations",
+      "source_file": "Rajya_Sabha_sitting/01_allocated_limit.csv",
+      "sha256": "294dca8f3c616abd1a74b5e7e3ea812f1cfe8b6aecfdb656db37bcd22e48d94d",
+      "source_rows": 232,
+      "accepted_rows": 232,
+      "quarantined_rows": 0,
+      "column_count": 10
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "consents",
+      "source_file": "Rajya_Sabha_sitting/02_calamity_consent.csv",
+      "sha256": "000b52ae31c5068f112a7870bc75cfae3caebc7c27a061e0b37bdd21ca6667cc",
+      "source_rows": 20,
+      "accepted_rows": 20,
+      "quarantined_rows": 0,
+      "column_count": 10
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "recommended",
+      "source_file": "Rajya_Sabha_sitting/03_works_recommended.csv",
+      "sha256": "1636c0a0e69d326d68b0eb6793ebb55bc225a7ed072146302508a61492ffdbbb",
+      "source_rows": 25369,
+      "accepted_rows": 25369,
+      "quarantined_rows": 0,
+      "column_count": 23
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "sanctioned",
+      "source_file": "Rajya_Sabha_sitting/04_works_sanctioned.csv",
+      "sha256": "24566251fab1ac3fd05d90653d75a608e5e90e45598f62cd8dae9f7ec5016a92",
+      "source_rows": 19750,
+      "accepted_rows": 19750,
+      "quarantined_rows": 0,
+      "column_count": 22
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "completed",
+      "source_file": "Rajya_Sabha_sitting/05_works_completed.csv",
+      "sha256": "f54d2b07ea706e727335fbe8882c9e92a0ce4a7a7d5c8a0abfe14705ac02975f",
+      "source_rows": 10046,
+      "accepted_rows": 10046,
+      "quarantined_rows": 0,
+      "column_count": 18
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "payments",
+      "source_file": "Rajya_Sabha_sitting/06_expenditure.csv",
+      "sha256": "dd629ba934b8aa7535a54d38425ee12190ff0257429a5bf2cd1576ca2ff0e0f2",
+      "source_rows": 25349,
+      "accepted_rows": 25349,
+      "quarantined_rows": 0,
+      "column_count": 19
+    }
+  ],
+  "outputs": {
+    "MP_Term_Features": {
+      "rows": 1023,
+      "columns": 29
+    },
+    "IDA_Features": {
+      "rows": 1045,
+      "columns": 16
+    },
+    "Cohort_Summary": {
+      "rows": 3,
+      "columns": 13
+    },
+    "Vendor_Features": {
+      "rows": 34242,
+      "columns": 13
+    },
+    "Vendor_Connections": {
+      "rows": 46817,
+      "columns": 9
+    },
+    "IDA_Year_Concentration": {
+      "rows": 2551,
+      "columns": 6
+    },
+    "Monthly_Payments": {
+      "rows": 2215,
+      "columns": 8
+    },
+    "Calamity_Consents": {
+      "rows": 33,
+      "columns": 11
+    },
+    "Work_Features": {
+      "rows": 160701,
+      "columns": 119
+    },
+    "Payment_Features": {
+      "rows": 113691,
+      "columns": 30
+    },
+    "Work_Signals": {
+      "rows": 182959,
+      "columns": 5
+    },
+    "Duplicate_Candidates": {
+      "rows": 37091,
+      "columns": 11
+    },
+    "Source_Audit": {
+      "rows": 18,
+      "columns": 8
+    },
+    "Source_Column_Profile": {
+      "rows": 306,
+      "columns": 5
+    },
+    "Field_Conflicts": {
+      "rows": 27087,
+      "columns": 6
+    },
+    "Quarantine": {
+      "rows": 1,
+      "columns": 24
+    },
+    "Normalization_Log": {
+      "rows": 15,
+      "columns": 6
+    },
+    "Feature_Dictionary": {
+      "rows": 319,
+      "columns": 9
+    },
+    "Validation_Checks": {
+      "rows": 116,
+      "columns": 4
+    }
+  },
+  "csv_sha256": {
+    "MP_Term_Features.csv": "8fe26ce217e9a2acee5e4cc41ceab02ff6d9d63d01323562362eee3dcab5f71e",
+    "IDA_Features.csv": "29556a0ab91f34aeee569f84b282b18cd72b683340ce289ca2abbc30e3e23524",
+    "Cohort_Summary.csv": "edcf6ec15847e911936ea31d836c8ef84dd00d79576179df94cccc2e9332a354",
+    "Vendor_Features.csv": "a98cd6b058c0b1d479a4f7d2f9a8564046605339815f15cc93b6e9a4d3ac618f",
+    "Vendor_Connections.csv": "e1215488ee05ae730d0bc2c75eb846fdfcf127b6acc4be524ddacd28a1a9af03",
+    "IDA_Year_Concentration.csv": "caa8ed47e73dde974158341c9f8bdd69e791aa208083f94ac469c40dc1f7ff61",
+    "Monthly_Payments.csv": "6f828bebd78bdde947a2d288192cc9fae0c4cd1279d6c46e1c9ae7c1a842efda",
+    "Calamity_Consents.csv": "933b04dc54937c27ef963e4a4da0cb9fc2e6035d1a7e3a894fdb761a6f808712",
+    "Work_Features.csv": "3d8d0217b1ad8606833bdb8031c828a5e9848b6c60b8aa63349212f20788afc2",
+    "Payment_Features.csv": "c58af373aaa25827c16a384e957aca6964e28b1c35b683373b37c2b2d9021c98",
+    "Work_Signals.csv": "5435b053907ecc95711feaf77818990a75e1bb607d12d91f163d0770ac10e32f",
+    "Duplicate_Candidates.csv": "75d94a2b6182f6a9f73fd58934ed35c49e7ecd059e3d42490315e5ba28dcfb3f",
+    "Source_Audit.csv": "01d5be75163852ca5fa92bfe95ccdd7c11aabcce49a67cd16274aec2a6fc94aa",
+    "Source_Column_Profile.csv": "cb5b16d0fe78843abec017ed8db46031f4cc4da164d61f922d136f7fc82cd63c",
+    "Field_Conflicts.csv": "8dfc278a687b8c4626a5520d5c6fde3d2f48d0e1fcd73a8fefdde8bed4d8a27f",
+    "Quarantine.csv": "94979dd5a544e763208bd3d04af41d02515c19922da8178f4ed4692d6af1a940",
+    "Normalization_Log.csv": "b0a0116185b7167af641730b6b140e4caf24dfa9e478a7b856b737562d514aa6",
+    "Feature_Dictionary.csv": "fd27888f4b4cff2a0a430d19f0e4651f4ccf1e25a84cfef6c24badad31ddea44",
+    "Validation_Checks.csv": "7e69d8d99886f1f9abb0f3177094affecc7f3335a7b0267c758a7bd2a9e5954a"
+  },
+  "code_sha256": {
+    "data_preparation\\contracts.py": "71bd8dc82a04eec939d9316bc074b091daf4690090ac05a0b94f8463b9df6aa2",
+    "data_preparation\\documentation.py": "f7d40901966e39ba93097d6d41aa5065165b97b3bc1555bb67ad5abde7ec5810",
+    "data_preparation\\prepare.py": "26c828bd0a696debbf4559a4e872994d93fa00f407a1a1632950d01c543fee4d",
+    "data_preparation\\profile_sources.py": "762fe3e6da422e7552d833c552355d59ee3b41021ad6a5e6e1c80471f540be31",
+    "data_preparation\\test_preparation.py": "3d2392aec9ec844fdf3f8aa4becf13a87988c26992f46cada2f7dae06b5d9e92",
+    "data_preparation\\verify.py": "b58b64a3a056e2ba09f6c3d7a97fc4cc2a956a4d32a6fd2f0473011f582ee230",
+    "six_source\\common.py": "11bd13a951d6824ee4e04928ea3331a8e17ee27cb1d7e15df742603f0906d8a2",
+    "six_source\\build.py": "8103aafb40272eef4d70cb8ffe9b5faa9e5728d66d39abd3d785d54742e822f4",
+    "pipeline_research\\build_features.py": "b3ec4560e146fb28f2c6a9ce5389cd85dfca2a1e9a5ff71b01e861e4a5821c90"
+  },
+  "duplicate_search": {
+    "candidate_comparisons": 1195446,
+    "work_cap_hits": 6197,
+    "posting_window_hits": 2580,
+    "retained_pairs": 37091,
+    "method": "Same IDA/activity; 3 rare tokens; last 150 postings; 60 candidates; top 3 similarities >=0.88. Full-snapshot token frequencies, deterministic key order. No measured duplicate recall."
+  },
+  "checks": [
+    {
+      "check": "All CSV files in scope accounted for",
+      "actual": "[\"Lok Sabha/01_allocated_limit.csv\", \"Lok Sabha/02_calamity_consent.csv\", \"Lok Sabha/03_works_recommended.csv\", \"Lok Sabha/04_works_sanctioned.csv\", \"Lok Sabha/05_works_completed.csv\", \"Lok Sabha/06_expenditure.csv\", \"Rajya_Sabha_retired/01_allocated_limit.csv\", \"Rajya_Sabha_retired/02_calamity_consent.csv\", \"Rajya_Sabha_retired/03_works_recommended.csv\", \"Rajya_Sabha_retired/04_works_sanctioned.csv\", \"Rajya_Sabha_retired/05_works_completed.csv\", \"Rajya_Sabha_retired/06_expenditure.csv\", \"Rajya_Sabha_sitting/01_allocated_limit.csv\", \"Rajya_Sabha_sitting/02_calamity_consent.csv\", \"Rajya_Sabha_sitting/03_works_recommended.csv\", \"Rajya_Sabha_sitting/04_works_sanctioned.csv\", \"Rajya_Sabha_sitting/05_works_completed.csv\", \"Rajya_Sabha_sitting/06_expenditure.csv\"]",
+      "expected": "[\"Lok Sabha/01_allocated_limit.csv\", \"Lok Sabha/02_calamity_consent.csv\", \"Lok Sabha/03_works_recommended.csv\", \"Lok Sabha/04_works_sanctioned.csv\", \"Lok Sabha/05_works_completed.csv\", \"Lok Sabha/06_expenditure.csv\", \"Rajya_Sabha_retired/01_allocated_limit.csv\", \"Rajya_Sabha_retired/02_calamity_consent.csv\", \"Rajya_Sabha_retired/03_works_recommended.csv\", \"Rajya_Sabha_retired/04_works_sanctioned.csv\", \"Rajya_Sabha_retired/05_works_completed.csv\", \"Rajya_Sabha_retired/06_expenditure.csv\", \"Rajya_Sabha_sitting/01_allocated_limit.csv\", \"Rajya_Sabha_sitting/02_calamity_consent.csv\", \"Rajya_Sabha_sitting/03_works_recommended.csv\", \"Rajya_Sabha_sitting/04_works_sanctioned.csv\", \"Rajya_Sabha_sitting/05_works_completed.csv\", \"Rajya_Sabha_sitting/06_expenditure.csv\"]",
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/allocations: source hash",
+      "actual": "da79d9fecefcff66670dd4b656f1d624b1feee0f2c5560800fd5b77bb14a696b",
+      "expected": "da79d9fecefcff66670dd4b656f1d624b1feee0f2c5560800fd5b77bb14a696b",
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/allocations: source rows",
+      "actual": 543,
+      "expected": 543,
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/consents: source hash",
+      "actual": "c653f3d0ebde00baabbd9fa375f830dc9c6755a5462e838ecbf514a2d35da373",
+      "expected": "c653f3d0ebde00baabbd9fa375f830dc9c6755a5462e838ecbf514a2d35da373",
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/consents: source rows",
+      "actual": 12,
+      "expected": 12,
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/recommended: source hash",
+      "actual": "f396f91ad15e0f63aae25e8171481e29007ad0c0632caed2cfd5b03c36e1c4a2",
+      "expected": "f396f91ad15e0f63aae25e8171481e29007ad0c0632caed2cfd5b03c36e1c4a2",
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/recommended: source rows",
+      "actual": 107562,
+      "expected": 107562,
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/recommended: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/sanctioned: source hash",
+      "actual": "8b31c7f7c335458719d8db447d5b53f407f72f66d56f434aaa7cff3a14c476d5",
+      "expected": "8b31c7f7c335458719d8db447d5b53f407f72f66d56f434aaa7cff3a14c476d5",
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/sanctioned: source rows",
+      "actual": 79881,
+      "expected": 79881,
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/sanctioned: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/completed: source hash",
+      "actual": "458edd98ddc5b2c4b9b713aca5f81333661775758073d2827058db2621c96139",
+      "expected": "458edd98ddc5b2c4b9b713aca5f81333661775758073d2827058db2621c96139",
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/completed: source rows",
+      "actual": 34940,
+      "expected": 34940,
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/completed: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/payments: source hash",
+      "actual": "bba2f79a9c5390a7e3a3ccada22282d3b223ea8f365991bbdd5a5b7a5637086f",
+      "expected": "bba2f79a9c5390a7e3a3ccada22282d3b223ea8f365991bbdd5a5b7a5637086f",
+      "passed": true
+    },
+    {
+      "check": "Lok Sabha/payments: source rows",
+      "actual": 57349,
+      "expected": 57349,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/allocations: source hash",
+      "actual": "af5ded2439679419b9bb8f646864ef778c291888b585c1bf53e9774e8d7c6c04",
+      "expected": "af5ded2439679419b9bb8f646864ef778c291888b585c1bf53e9774e8d7c6c04",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/allocations: source rows",
+      "actual": 248,
+      "expected": 248,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/consents: source hash",
+      "actual": "ee931fe277645349f172ce6e344d6e94bcb937fbfbaa8f3c17a3d8151ee7b55a",
+      "expected": "ee931fe277645349f172ce6e344d6e94bcb937fbfbaa8f3c17a3d8151ee7b55a",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/consents: source rows",
+      "actual": 1,
+      "expected": 1,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/recommended: source hash",
+      "actual": "92ce886b7d0a14c2518c6558c864a007a0f1f6919f5c07b9bdf3f825beb3721d",
+      "expected": "92ce886b7d0a14c2518c6558c864a007a0f1f6919f5c07b9bdf3f825beb3721d",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/recommended: source rows",
+      "actual": 26863,
+      "expected": 26863,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/recommended: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/sanctioned: source hash",
+      "actual": "e7145deeb0b384c87921edf6b5f327047f9326976ccaed9eefa1630e47ae58e1",
+      "expected": "e7145deeb0b384c87921edf6b5f327047f9326976ccaed9eefa1630e47ae58e1",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/sanctioned: source rows",
+      "actual": 24524,
+      "expected": 24524,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/sanctioned: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/completed: source hash",
+      "actual": "3f323198bdc3a7b3361cb8bfbb34f2c58ec45ccb7e3319713e3d839182965dd5",
+      "expected": "3f323198bdc3a7b3361cb8bfbb34f2c58ec45ccb7e3319713e3d839182965dd5",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/completed: source rows",
+      "actual": 16282,
+      "expected": 16282,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/completed: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/payments: source hash",
+      "actual": "3b873f3dd0d6cd7b16254a5ffa1a3996a1103a4ec3a63d54ad63363fa298ccf3",
+      "expected": "3b873f3dd0d6cd7b16254a5ffa1a3996a1103a4ec3a63d54ad63363fa298ccf3",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_retired/payments: source rows",
+      "actual": 30994,
+      "expected": 30994,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/allocations: source hash",
+      "actual": "294dca8f3c616abd1a74b5e7e3ea812f1cfe8b6aecfdb656db37bcd22e48d94d",
+      "expected": "294dca8f3c616abd1a74b5e7e3ea812f1cfe8b6aecfdb656db37bcd22e48d94d",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/allocations: source rows",
+      "actual": 232,
+      "expected": 232,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/consents: source hash",
+      "actual": "000b52ae31c5068f112a7870bc75cfae3caebc7c27a061e0b37bdd21ca6667cc",
+      "expected": "000b52ae31c5068f112a7870bc75cfae3caebc7c27a061e0b37bdd21ca6667cc",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/consents: source rows",
+      "actual": 20,
+      "expected": 20,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/recommended: source hash",
+      "actual": "1636c0a0e69d326d68b0eb6793ebb55bc225a7ed072146302508a61492ffdbbb",
+      "expected": "1636c0a0e69d326d68b0eb6793ebb55bc225a7ed072146302508a61492ffdbbb",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/recommended: source rows",
+      "actual": 25369,
+      "expected": 25369,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/recommended: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/sanctioned: source hash",
+      "actual": "24566251fab1ac3fd05d90653d75a608e5e90e45598f62cd8dae9f7ec5016a92",
+      "expected": "24566251fab1ac3fd05d90653d75a608e5e90e45598f62cd8dae9f7ec5016a92",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/sanctioned: source rows",
+      "actual": 19750,
+      "expected": 19750,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/sanctioned: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/completed: source hash",
+      "actual": "f54d2b07ea706e727335fbe8882c9e92a0ce4a7a7d5c8a0abfe14705ac02975f",
+      "expected": "f54d2b07ea706e727335fbe8882c9e92a0ce4a7a7d5c8a0abfe14705ac02975f",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/completed: source rows",
+      "actual": 10046,
+      "expected": 10046,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/completed: namespaced key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/payments: source hash",
+      "actual": "dd629ba934b8aa7535a54d38425ee12190ff0257429a5bf2cd1576ca2ff0e0f2",
+      "expected": "dd629ba934b8aa7535a54d38425ee12190ff0257429a5bf2cd1576ca2ff0e0f2",
+      "passed": true
+    },
+    {
+      "check": "Rajya_Sabha_sitting/payments: source rows",
+      "actual": 25349,
+      "expected": 25349,
+      "passed": true
+    },
+    {
+      "check": "allocations: combined key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "recommended: combined key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "sanctioned: combined key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "completed: combined key duplicates",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "consents: unmatched MP terms",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "recommended: unmatched MP terms",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "sanctioned: unmatched MP terms",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "payments: unmatched MP terms",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Completed keys absent from sanctions",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "recommended/sanction MP_NAME join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "recommended/sanction STATE_NAME join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "recommended/sanction IDA_NAME join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "recommended/sanction CONSTITUENCY_ID join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "recommended/sanction TENURE_START_DATE join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "recommended/sanction TENURE_END_DATE join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "completed/sanction MP_NAME join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "completed/sanction STATE_NAME join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "completed/sanction IDA_NAME join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "completed/sanction CONSTITUENCY_ID join disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Payment keys absent from work master",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Unexpected payment statuses",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Invalid payment amounts",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Payment MP term disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Payment cohort disagreement",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "Work master equals safe recommendation/sanction key union",
+      "actual": 160701,
+      "expected": 160701,
+      "passed": true
+    },
+    {
+      "check": "Recommended exact paise reconciliation",
+      "actual": 10272233405817,
+      "expected": 10272233405817,
+      "passed": true
+    },
+    {
+      "check": "Sanctioned exact paise reconciliation",
+      "actual": 7998309744846,
+      "expected": 7998309744846,
+      "passed": true
+    },
+    {
+      "check": "Completion exact paise reconciliation",
+      "actual": 3596293304309,
+      "expected": 3596293304309,
+      "passed": true
+    },
+    {
+      "check": "Work_Features: Payment Success paise",
+      "actual": 4592559970304,
+      "expected": 4592559970304,
+      "passed": true
+    },
+    {
+      "check": "MP_Term_Features: Payment Success paise",
+      "actual": 4592559970304,
+      "expected": 4592559970304,
+      "passed": true
+    },
+    {
+      "check": "IDA_Features: Payment Success paise",
+      "actual": 4592559970304,
+      "expected": 4592559970304,
+      "passed": true
+    },
+    {
+      "check": "Vendor_Features: Payment Success paise",
+      "actual": 4592559970304,
+      "expected": 4592559970304,
+      "passed": true
+    },
+    {
+      "check": "Vendor_Connections: Payment Success paise",
+      "actual": 4592559970304,
+      "expected": 4592559970304,
+      "passed": true
+    },
+    {
+      "check": "Monthly_Payments: Payment Success paise",
+      "actual": 4592559970304,
+      "expected": 4592559970304,
+      "passed": true
+    },
+    {
+      "check": "Cohort_Summary: Payment Success paise",
+      "actual": 4592559970304,
+      "expected": 4592559970304,
+      "passed": true
+    },
+    {
+      "check": "Work_Features: Payment In-Progress paise",
+      "actual": 146584434100,
+      "expected": 146584434100,
+      "passed": true
+    },
+    {
+      "check": "MP_Term_Features: Payment In-Progress paise",
+      "actual": 146584434100,
+      "expected": 146584434100,
+      "passed": true
+    },
+    {
+      "check": "IDA_Features: Payment In-Progress paise",
+      "actual": 146584434100,
+      "expected": 146584434100,
+      "passed": true
+    },
+    {
+      "check": "Vendor_Features: Payment In-Progress paise",
+      "actual": 146584434100,
+      "expected": 146584434100,
+      "passed": true
+    },
+    {
+      "check": "Vendor_Connections: Payment In-Progress paise",
+      "actual": 146584434100,
+      "expected": 146584434100,
+      "passed": true
+    },
+    {
+      "check": "Monthly_Payments: Payment In-Progress paise",
+      "actual": 146584434100,
+      "expected": 146584434100,
+      "passed": true
+    },
+    {
+      "check": "Cohort_Summary: Payment In-Progress paise",
+      "actual": 146584434100,
+      "expected": 146584434100,
+      "passed": true
+    },
+    {
+      "check": "Preserved raw records",
+      "actual": 459965,
+      "expected": 459965,
+      "passed": true
+    },
+    {
+      "check": "Accepted + quarantined records",
+      "actual": 459965,
+      "expected": 459965,
+      "passed": true
+    },
+    {
+      "check": "All recommendation rows retained as work entities",
+      "actual": 159794,
+      "expected": 159794,
+      "passed": true
+    },
+    {
+      "check": "All sanction rows retained once",
+      "actual": 124155,
+      "expected": 124155,
+      "passed": true
+    },
+    {
+      "check": "All completion rows retained once",
+      "actual": 61268,
+      "expected": 61268,
+      "passed": true
+    },
+    {
+      "check": "All accepted payments retained",
+      "actual": 113691,
+      "expected": 113691,
+      "passed": true
+    },
+    {
+      "check": "All MP allocation rows retained",
+      "actual": 1023,
+      "expected": 1023,
+      "passed": true
+    },
+    {
+      "check": "No duplicated output work keys",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "No missing feature definitions",
+      "actual": 0,
+      "expected": 0,
+      "passed": true
+    },
+    {
+      "check": "SQLite integrity",
+      "actual": "ok",
+      "expected": "ok",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Lok Sabha/01_allocated_limit.csv",
+      "actual": "da79d9fecefcff66670dd4b656f1d624b1feee0f2c5560800fd5b77bb14a696b",
+      "expected": "da79d9fecefcff66670dd4b656f1d624b1feee0f2c5560800fd5b77bb14a696b",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Lok Sabha/02_calamity_consent.csv",
+      "actual": "c653f3d0ebde00baabbd9fa375f830dc9c6755a5462e838ecbf514a2d35da373",
+      "expected": "c653f3d0ebde00baabbd9fa375f830dc9c6755a5462e838ecbf514a2d35da373",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Lok Sabha/03_works_recommended.csv",
+      "actual": "f396f91ad15e0f63aae25e8171481e29007ad0c0632caed2cfd5b03c36e1c4a2",
+      "expected": "f396f91ad15e0f63aae25e8171481e29007ad0c0632caed2cfd5b03c36e1c4a2",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Lok Sabha/04_works_sanctioned.csv",
+      "actual": "8b31c7f7c335458719d8db447d5b53f407f72f66d56f434aaa7cff3a14c476d5",
+      "expected": "8b31c7f7c335458719d8db447d5b53f407f72f66d56f434aaa7cff3a14c476d5",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Lok Sabha/05_works_completed.csv",
+      "actual": "458edd98ddc5b2c4b9b713aca5f81333661775758073d2827058db2621c96139",
+      "expected": "458edd98ddc5b2c4b9b713aca5f81333661775758073d2827058db2621c96139",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Lok Sabha/06_expenditure.csv",
+      "actual": "bba2f79a9c5390a7e3a3ccada22282d3b223ea8f365991bbdd5a5b7a5637086f",
+      "expected": "bba2f79a9c5390a7e3a3ccada22282d3b223ea8f365991bbdd5a5b7a5637086f",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_retired/01_allocated_limit.csv",
+      "actual": "af5ded2439679419b9bb8f646864ef778c291888b585c1bf53e9774e8d7c6c04",
+      "expected": "af5ded2439679419b9bb8f646864ef778c291888b585c1bf53e9774e8d7c6c04",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_retired/02_calamity_consent.csv",
+      "actual": "ee931fe277645349f172ce6e344d6e94bcb937fbfbaa8f3c17a3d8151ee7b55a",
+      "expected": "ee931fe277645349f172ce6e344d6e94bcb937fbfbaa8f3c17a3d8151ee7b55a",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_retired/03_works_recommended.csv",
+      "actual": "92ce886b7d0a14c2518c6558c864a007a0f1f6919f5c07b9bdf3f825beb3721d",
+      "expected": "92ce886b7d0a14c2518c6558c864a007a0f1f6919f5c07b9bdf3f825beb3721d",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_retired/04_works_sanctioned.csv",
+      "actual": "e7145deeb0b384c87921edf6b5f327047f9326976ccaed9eefa1630e47ae58e1",
+      "expected": "e7145deeb0b384c87921edf6b5f327047f9326976ccaed9eefa1630e47ae58e1",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_retired/05_works_completed.csv",
+      "actual": "3f323198bdc3a7b3361cb8bfbb34f2c58ec45ccb7e3319713e3d839182965dd5",
+      "expected": "3f323198bdc3a7b3361cb8bfbb34f2c58ec45ccb7e3319713e3d839182965dd5",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_retired/06_expenditure.csv",
+      "actual": "3b873f3dd0d6cd7b16254a5ffa1a3996a1103a4ec3a63d54ad63363fa298ccf3",
+      "expected": "3b873f3dd0d6cd7b16254a5ffa1a3996a1103a4ec3a63d54ad63363fa298ccf3",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_sitting/01_allocated_limit.csv",
+      "actual": "294dca8f3c616abd1a74b5e7e3ea812f1cfe8b6aecfdb656db37bcd22e48d94d",
+      "expected": "294dca8f3c616abd1a74b5e7e3ea812f1cfe8b6aecfdb656db37bcd22e48d94d",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_sitting/02_calamity_consent.csv",
+      "actual": "000b52ae31c5068f112a7870bc75cfae3caebc7c27a061e0b37bdd21ca6667cc",
+      "expected": "000b52ae31c5068f112a7870bc75cfae3caebc7c27a061e0b37bdd21ca6667cc",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_sitting/03_works_recommended.csv",
+      "actual": "1636c0a0e69d326d68b0eb6793ebb55bc225a7ed072146302508a61492ffdbbb",
+      "expected": "1636c0a0e69d326d68b0eb6793ebb55bc225a7ed072146302508a61492ffdbbb",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_sitting/04_works_sanctioned.csv",
+      "actual": "24566251fab1ac3fd05d90653d75a608e5e90e45598f62cd8dae9f7ec5016a92",
+      "expected": "24566251fab1ac3fd05d90653d75a608e5e90e45598f62cd8dae9f7ec5016a92",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_sitting/05_works_completed.csv",
+      "actual": "f54d2b07ea706e727335fbe8882c9e92a0ce4a7a7d5c8a0abfe14705ac02975f",
+      "expected": "f54d2b07ea706e727335fbe8882c9e92a0ce4a7a7d5c8a0abfe14705ac02975f",
+      "passed": true
+    },
+    {
+      "check": "Raw unchanged Rajya_Sabha_sitting/06_expenditure.csv",
+      "actual": "dd629ba934b8aa7535a54d38425ee12190ff0257429a5bf2cd1576ca2ff0e0f2",
+      "expected": "dd629ba934b8aa7535a54d38425ee12190ff0257429a5bf2cd1576ca2ff0e0f2",
+      "passed": true
+    }
+  ]
+}
