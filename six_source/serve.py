@@ -10,6 +10,8 @@ from pathlib import Path
 import re
 import shutil
 import sqlite3
+
+import nlq
 from urllib.parse import parse_qs, unquote, urlsplit
 
 WORK_KEY=re.compile(r"[a-z_]+:[a-z0-9]*:\d+")
@@ -134,6 +136,11 @@ class Handler(SimpleHTTPRequestHandler):
                     states=[r[0] for r in db.execute("SELECT DISTINCT state FROM Work_Features ORDER BY state")]
                     years=[r[0] for r in db.execute("SELECT DISTINCT sanction_fy FROM Work_Features WHERE sanction_fy IS NOT NULL ORDER BY sanction_fy")]
                     return self.reply({"states":states,"years":years})
+                if route=="/api/ask":
+                    q=scalar(params,"q").strip()
+                    if not q:return self.reply({"examples":nlq.EXAMPLES})
+                    if len(q)>300:raise ValueError("Question is limited to 300 characters")
+                    return self.reply({**nlq.answer(db,q),"examples":nlq.EXAMPLES})
                 if route=="/api/overview":
                     metrics="COUNT(*) works, SUM(in_sanctioned) sanctioned, SUM(in_completed) completed, SUM(CASE WHEN priority_band='High' THEN 1 ELSE 0 END) high, SUM(open_over_one_year_flag) open_over_year, SUM(no_payment_three_months_flag) no_payment_3m, SUM(sanction_amount_paise) sanction_paise, SUM(successful_payment_paise) successful_payment_paise, SUM(pending_payment_paise) pending_payment_paise, AVG(priority_score) mean_priority"
                     national=dict(db.execute(f"SELECT {metrics}, COUNT(DISTINCT mp_key) mp_count, COUNT(DISTINCT ida_key) ida_count FROM Work_Features").fetchone())

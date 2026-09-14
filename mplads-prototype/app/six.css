@@ -15,3 +15,6 @@
 .s6-heatwrap{overflow-x:auto;max-height:560px;overflow-y:auto}.s6-heat td{font-variant-numeric:tabular-nums}.s6-heatcell{display:inline-block;border-radius:4px;padding:3px 8px;font-weight:600;color:#3a1c12}.s6-row-active{outline:2px solid #1566a0;outline-offset:-2px}
 @media(max-width:1050px){.s6-kpis{grid-template-columns:repeat(2,1fr)}.s6-dash-grid{grid-template-columns:1fr}.s6-dash-cohorts{grid-template-columns:1fr}}
 @media(max-width:680px){.s6-kpis{grid-template-columns:1fr 1fr}}
+.s6-ask{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #bbc9d5;border-radius:8px;padding:10px 14px;margin:16px 0}.s6-ask input{flex:1;border:0;outline:none;font-size:16px;min-width:0}.s6-ask button{background:#164f7b;color:#fff;border-color:#164f7b;padding:9px 18px;font-weight:600}
+.s6-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}.s6-chip{font-size:13px;background:#eef3f8;border:1px solid #d3deea;color:#255b82;border-radius:16px;padding:6px 12px}
+.s6-sql{background:#0f2233;color:#d7e6f2;padding:14px;border-radius:6px;overflow-x:auto;font-size:13px;white-space:pre;line-height:1.5}

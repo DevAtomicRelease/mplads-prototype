@@ -13,7 +13,7 @@ Full engineering plan: **[`FINAL_PROJECT_PLAN.md`](FINAL_PROJECT_PLAN.md)**. Dom
 | Path | Role |
 |---|---|
 | `Dataset/` | Immutable source CSVs, per cohort: `Lok Sabha/`, `Rajya_Sabha_sitting/`, `Rajya_Sabha_retired/`. Six files each (allocation, calamity consent, recommended, sanctioned, completed, expenditure). **Never edited.** All three build together into 160,701 works. |
-| `six_source/` | **Canonical engine.** `build.py` (data + feature + detection pipeline), `serve.py` (loopback investigation API), `patterns.py` (relations/pattern report), `isolation.py` (vendored NumPy Isolation Forest), `common.py` (versioned contracts & hashes). |
+| `six_source/` | **Canonical engine.** `build.py` (data + feature + detection pipeline), `serve.py` (loopback investigation API), `nlq.py` (local deterministic natural-language query engine), `patterns.py` (relations/pattern report), `isolation.py` (vendored NumPy Isolation Forest), `common.py` (versioned contracts & hashes). |
 | `evaluation_18/` | Frozen offline A/B protocol + synthetic-injection benchmark (how the system is validated without fraud labels). |
 | `mplads-prototype/` | React 19 + Vite + TypeScript front-end (investigation workspace; `app/six-local.tsx`). |
 | `FINAL_PROJECT_PLAN.md` | Architecture, workflow, AI/ML, tech stack, data pipeline, execution order. |
@@ -110,6 +110,10 @@ Lok Sabha cohort snapshot:
 Numbers are descriptive of the supplied 18th Lok Sabha exports, not verified national totals.
 
 ---
+
+## Ask the data (local NL→SQL)
+
+`six_source/nlq.py` answers plain-English questions (*"Which districts in Bihar have the most delays?"*, *"States with the lowest settled-to-sanction ratio"*) **entirely locally** — a deterministic intent parser maps the question to an allow-listed, parameterised aggregate over `Work_Features`, and returns an interpretation, a source-tied summary, a formatted table, and the **exact generated SQL**. No external LLM, no data egress, no hallucination — every number is reproducible from the shown query. Served at `/api/ask`; the "Ask the data" tab exposes it with example prompts.
 
 ## Validation (`evaluation_18/`)
 
