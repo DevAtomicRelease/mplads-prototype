@@ -7,9 +7,12 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
+import re
 import shutil
 import sqlite3
 from urllib.parse import parse_qs, unquote, urlsplit
+
+WORK_KEY=re.compile(r"[a-z_]+:[a-z0-9]*:\d+")
 
 ROOT=Path(__file__).resolve().parents[1]
 LOCAL=Path(__file__).parent/"local"
@@ -141,7 +144,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.reply({"items":[dict(r) for r in rows],"summary":summary,"limit":size,"offset":offset})
                 if route.startswith("/api/work/"):
                     key=route.removeprefix("/api/work/")
-                    if not key.isdigit():raise ValueError("Invalid work ID")
+                    if not WORK_KEY.fullmatch(key):raise ValueError("Invalid work ID")
                     row=db.execute("SELECT * FROM Work_Features WHERE work_id=?",[key]).fetchone()
                     if row is None:return self.reply({"error":"Work not found"},404)
                     reasons=[dict(r) for r in db.execute("SELECT * FROM Rule_Contributions WHERE work_id=? ORDER BY points DESC,rule",[key])]
@@ -185,7 +188,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not isinstance(key,str) or len(key)>100 or not isinstance(note,str) or not 1<=len(note.strip())<=3000 or outcome not in OUTCOMES:raise ValueError("Valid record, disposition and 1-3000 character evidence note required")
             if data.get("version")!=self.server.version:return self.reply({"error":"Dataset changed; reload before saving"},409)
             with connect(self.server.local/"mplads.sqlite3") as db:
-                found=db.execute("SELECT 1 FROM Work_Features WHERE work_id=?",[key]).fetchone() if key.isdigit() else db.execute("SELECT 1 FROM Duplicate_Candidates WHERE pair_id=?",[key]).fetchone()
+                found=db.execute("SELECT 1 FROM Duplicate_Candidates WHERE pair_id=?",[key]).fetchone() if key.startswith("pair:") else db.execute("SELECT 1 FROM Work_Features WHERE work_id=?",[key]).fetchone()
             if not found:raise ValueError("Record not in this dataset")
             with connect(self.server.review_db,False) as db:
                 cur=db.execute("INSERT INTO reviews(record_key,outcome,note,created,version) VALUES (?,?,?,?,?)",[key,outcome,note.strip(),datetime.now(timezone.utc).isoformat(),self.server.version]);identifier=cur.lastrowid

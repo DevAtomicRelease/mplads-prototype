@@ -5,28 +5,55 @@ import hashlib
 import json
 import re
 import unicodedata
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "six-source-2026-09-09-v2"
-AS_OF = "2026-09-09"
+VERSION = "six-source-2026-09-14-v3"
+AS_OF = "2026-09-14"
 SEED = 26102
 FILES = {
     "allocations": "01_allocated_limit.csv", "consents": "02_calamity_consent.csv",
     "recommended": "03_works_recommended.csv", "sanctioned": "04_works_sanctioned.csv",
     "completed": "05_works_completed.csv", "payments": "06_expenditure.csv",
 }
-EXPECTED = {
-    "allocations": (543, "da79d9fecefcff66670dd4b656f1d624b1feee0f2c5560800fd5b77bb14a696b"),
-    "consents": (12, "c653f3d0ebde00baabbd9fa375f830dc9c6755a5462e838ecbf514a2d35da373"),
-    "recommended": (107562, "f396f91ad15e0f63aae25e8171481e29007ad0c0632caed2cfd5b03c36e1c4a2"),
-    "sanctioned": (79881, "8b31c7f7c335458719d8db447d5b53f407f72f66d56f434aaa7cff3a14c476d5"),
-    "completed": (34940, "458edd98ddc5b2c4b9b713aca5f81333661775758073d2827058db2621c96139"),
-    "payments": (57349, "bba2f79a9c5390a7e3a3ccada22282d3b223ea8f365991bbdd5a5b7a5637086f"),
+# Cohort code -> Dataset subfolder. RS sitting and retired share HOUSE/TENURE values,
+# and raw WORK_RECOMMENDATION_DTL_ID overlaps across cohorts, so every work key and
+# MP key is namespaced by cohort code (see mp_key and build.load_sources).
+COHORTS = {
+    "lok_sabha": "Lok Sabha",
+    "rs_sitting": "Rajya_Sabha_sitting",
+    "rs_retired": "Rajya_Sabha_retired",
+}
+# Frozen per-cohort source contract: (row count, sha256). Build fails closed on drift.
+CONTRACTS = {
+    "lok_sabha": {
+        "allocations": (543, "da79d9fecefcff66670dd4b656f1d624b1feee0f2c5560800fd5b77bb14a696b"),
+        "consents": (12, "c653f3d0ebde00baabbd9fa375f830dc9c6755a5462e838ecbf514a2d35da373"),
+        "recommended": (107562, "f396f91ad15e0f63aae25e8171481e29007ad0c0632caed2cfd5b03c36e1c4a2"),
+        "sanctioned": (79881, "8b31c7f7c335458719d8db447d5b53f407f72f66d56f434aaa7cff3a14c476d5"),
+        "completed": (34940, "458edd98ddc5b2c4b9b713aca5f81333661775758073d2827058db2621c96139"),
+        "payments": (57349, "bba2f79a9c5390a7e3a3ccada22282d3b223ea8f365991bbdd5a5b7a5637086f"),
+    },
+    "rs_sitting": {
+        "allocations": (232, "294dca8f3c616abd1a74b5e7e3ea812f1cfe8b6aecfdb656db37bcd22e48d94d"),
+        "consents": (20, "000b52ae31c5068f112a7870bc75cfae3caebc7c27a061e0b37bdd21ca6667cc"),
+        "recommended": (25369, "1636c0a0e69d326d68b0eb6793ebb55bc225a7ed072146302508a61492ffdbbb"),
+        "sanctioned": (19750, "24566251fab1ac3fd05d90653d75a608e5e90e45598f62cd8dae9f7ec5016a92"),
+        "completed": (10046, "f54d2b07ea706e727335fbe8882c9e92a0ce4a7a7d5c8a0abfe14705ac02975f"),
+        "payments": (25349, "dd629ba934b8aa7535a54d38425ee12190ff0257429a5bf2cd1576ca2ff0e0f2"),
+    },
+    "rs_retired": {
+        "allocations": (248, "af5ded2439679419b9bb8f646864ef778c291888b585c1bf53e9774e8d7c6c04"),
+        "consents": (1, "ee931fe277645349f172ce6e344d6e94bcb937fbfbaa8f3c17a3d8151ee7b55a"),
+        "recommended": (26863, "92ce886b7d0a14c2518c6558c864a007a0f1f6919f5c07b9bdf3f825beb3721d"),
+        "sanctioned": (24524, "e7145deeb0b384c87921edf6b5f327047f9326976ccaed9eefa1630e47ae58e1"),
+        "completed": (16282, "3f323198bdc3a7b3361cb8bfbb34f2c58ec45ccb7e3319713e3d839182965dd5"),
+        "payments": (30994, "3b873f3dd0d6cd7b16254a5ffa1a3996a1103a4ec3a63d54ad63363fa298ccf3"),
+    },
 }
 SOURCES = [
     {"id": "PS", "title": "SIH PS 26102 (supplied problem statement)", "date": "2026", "url": "https://www.sih.gov.in/sih2026PS", "use": "Anomaly investigation, financial and execution monitoring, explainability and accountable review."},
@@ -65,7 +92,9 @@ def name_key(value):
 
 
 def mp_key(frame):
-    return frame.HOUSE_OF_PARLIAMENT + "|" + frame.TENURE + "|" + frame.MP_NAME.map(name_key)
+    # Cohort-namespaced: RS sitting and retired share HOUSE/TENURE values, so a bare
+    # house|tenure|name key could attach a work to the wrong cohort's allocation.
+    return frame.COHORT + "|" + frame.HOUSE_OF_PARLIAMENT + "|" + frame.TENURE + "|" + frame.MP_NAME.map(name_key)
 
 
 def paise(value):
@@ -75,8 +104,13 @@ def paise(value):
         exact = Decimal(str(value).strip()) * 100
     except InvalidOperation as exc:
         raise ValueError("Invalid monetary value") from exc
-    require(exact.is_finite() and exact == exact.to_integral_value(), "Money is not finite whole paise")
-    return int(exact)
+    require(exact.is_finite(), "Money is not finite")
+    nearest = exact.to_integral_value(rounding=ROUND_HALF_UP)
+    # Some source exports serialize rupee amounts as floats with tiny binary noise
+    # (e.g. ALLOCATED_AMT '197118521.35000002' = 197118521.35). Snap to the nearest paise
+    # only within a negligible tolerance; genuine sub-paise precision still fails closed.
+    require(abs(exact - nearest) <= Decimal("0.0001"), "Money is not whole paise")
+    return int(nearest)
 
 
 def money(series):

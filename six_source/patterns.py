@@ -28,6 +28,16 @@ def report(local: Path) -> str:
     P("# MPLADS -- Data Relations & Patterns (descriptive; not fraud findings)\n")
     P(f"Works: {len(work):,} | feature columns: {work.shape[1]}\n")
 
+    if "cohort" in work.columns and work.cohort.nunique() > 1:
+        P("## 0. Cohort overview")
+        cb = work.groupby("cohort").agg(works=("work_id", "size"), sanctioned=("in_sanctioned", "sum"), completed=("in_completed", "sum"), high=("priority_band", lambda x: (x == "High").sum()), sanction_cr=("sanction_amount_paise", lambda x: x.sum() / 1e9), settled_cr=("successful_payment_paise", lambda x: x.sum() / 1e9))
+        cb["settled_pct_of_sanction"] = (cb.settled_cr / cb.sanction_cr * 100).round(1)
+        cb["sanction_cr"] = cb.sanction_cr.round(1); cb["settled_cr"] = cb.settled_cr.round(1)
+        P("```")
+        P(cb.to_string())
+        P("```")
+        P("_RS reuses WORK_RECOMMENDATION_DTL_ID across MPs; keys are namespaced cohort:mpkey:id._\n")
+
     P("## 1. Lifecycle funnel")
     rec, san, comp = int(work.in_recommended.sum()), int(work.in_sanctioned.sum()), int(work.in_completed.sum())
     P(f"- Recommended rows: {rec:,}")

@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from common import AS_OF, EXPECTED, FILES, ROOT, SEED, SOURCES, VERSION, dates, fy, json_safe, money, mp_key, norm, ratio, require, sha, to_records, write_json
+from common import AS_OF, COHORTS, CONTRACTS, FILES, ROOT, SEED, SOURCES, VERSION, dates, fy, json_safe, money, mp_key, name_key, norm, ratio, require, sha, to_records, write_json
 
 # Vendored NumPy Isolation Forest; no cross-directory runtime dependency.
 from isolation import isolation_scores
@@ -27,33 +27,48 @@ def field(frame, name, values, meaning, source="Connected sources", timing="Snap
     DEFS[name] = (meaning, source, timing)
 
 
-def load_sources(input_dir):
-    tables, audit, quarantine = {}, [], []
-    for key, filename in FILES.items():
-        path = input_dir / filename
-        frame = pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
-        digest = sha(path)
-        expected_rows, expected_hash = EXPECTED[key]
-        require(len(frame) == expected_rows and digest == expected_hash,
-                f"{filename}: source differs from the reviewed contract. Profile and approve a new source version first.")
-        report = {"source": key, "file": filename, "rows": len(frame), "bytes": path.stat().st_size, "sha256": digest,
-                  "columns": list(frame.columns), "blank_counts": {c: int(frame[c].str.strip().eq("").sum()) for c in frame},
-                  "na_token_counts": {c: int(frame[c].eq("NA").sum()) for c in frame if frame[c].eq("NA").any()}}
-        frame["source_record"] = np.arange(1, len(frame) + 1)
-        if key == "payments":
-            required = ["WORK_RECOMMENDATION_DTL_ID", "VENDOR_ID", "EXPENDITURE_DATE", "FUND_DISBURSED_AMT", "WORK_STATUS", "MP_NAME"]
-            invalid = frame[required].eq("").any(axis=1)
-            rejected = frame.loc[invalid].copy()
-            rejected["quarantine_reason"] = "Incomplete expenditure record: required identifier/date/amount/status missing; apparent truncated final CSV row"
-            quarantine.append(rejected)
-            frame = frame.loc[~invalid].copy()
-        report["accepted_rows"] = len(frame)
-        report["quarantined_rows"] = report["rows"] - len(frame)
-        audit.append(report)
-        if "WORK_RECOMMENDATION_DTL_ID" in frame and key != "payments":
-            require(frame.WORK_RECOMMENDATION_DTL_ID.is_unique, f"Duplicate work key in {filename}")
-        tables[key] = frame
-    return tables, audit, pd.concat(quarantine, ignore_index=True)
+def load_sources(input_root, cohorts):
+    parts = {key: [] for key in FILES}
+    audit, quarantine = [], []
+    for code in cohorts:
+        require(code in COHORTS, f"Unknown cohort '{code}'")
+        cohort_dir = input_root / COHORTS[code]
+        for key, filename in FILES.items():
+            path = cohort_dir / filename
+            frame = pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
+            digest = sha(path)
+            expected_rows, expected_hash = CONTRACTS[code][key]
+            require(len(frame) == expected_rows and digest == expected_hash,
+                    f"{code}/{filename}: source differs from the reviewed contract. Profile and approve a new source version first.")
+            report = {"cohort": code, "source": key, "file": f"{COHORTS[code]}/{filename}", "rows": len(frame), "bytes": path.stat().st_size, "sha256": digest,
+                      "columns": list(frame.columns), "blank_counts": {c: int(frame[c].str.strip().eq("").sum()) for c in frame},
+                      "na_token_counts": {c: int(frame[c].eq("NA").sum()) for c in frame if frame[c].eq("NA").any()}}
+            frame["COHORT"] = code
+            frame["source_record"] = np.arange(1, len(frame) + 1)
+            if key == "payments":
+                required = ["WORK_RECOMMENDATION_DTL_ID", "VENDOR_ID", "EXPENDITURE_DATE", "FUND_DISBURSED_AMT", "WORK_STATUS", "MP_NAME"]
+                invalid = frame[required].eq("").any(axis=1)
+                rejected = frame.loc[invalid].copy()
+                rejected["quarantine_reason"] = "Incomplete expenditure record: required identifier/date/amount/status missing; apparent truncated final CSV row"
+                quarantine.append(rejected)
+                frame = frame.loc[~invalid].copy()
+            # Namespace the work/payment join key AFTER quarantine as cohort:mpkey:id.
+            # The Rajya Sabha portal reuses WORK_RECOMMENDATION_DTL_ID across MPs (same id,
+            # different member/tenure/amount), so the id is unique only per MP; the
+            # normalized MP name disambiguates and joins consistently across all four work
+            # files and payments. Lok Sabha ids are already unique, so its work count is
+            # unchanged. Namespacing after quarantine keeps blank required fields detectable.
+            if "WORK_RECOMMENDATION_DTL_ID" in frame.columns:
+                frame["WORK_RECOMMENDATION_DTL_ID"] = code + ":" + frame["MP_NAME"].map(name_key) + ":" + frame["WORK_RECOMMENDATION_DTL_ID"].astype(str)
+            report["accepted_rows"] = len(frame)
+            report["quarantined_rows"] = report["rows"] - len(frame)
+            audit.append(report)
+            parts[key].append(frame)
+    tables = {key: pd.concat(frames, ignore_index=True) for key, frames in parts.items()}
+    for key in ("recommended", "sanctioned", "completed"):
+        require(tables[key].WORK_RECOMMENDATION_DTL_ID.is_unique, f"Duplicate namespaced work key in {key}")
+    quarantine_frame = pd.concat(quarantine, ignore_index=True) if quarantine else pd.DataFrame()
+    return tables, audit, quarantine_frame
 
 
 def connect_works(tables):
@@ -61,9 +76,11 @@ def connect_works(tables):
     san = tables["sanctioned"].set_index("WORK_RECOMMENDATION_DTL_ID")
     complete = tables["completed"].set_index("WORK_RECOMMENDATION_DTL_ID")
     # Sanctioned source governs sanctioned fields; recommendation-only rows remain.
-    source = san.combine_first(rec).sort_index(key=lambda s: s.astype(int))
+    # Work keys are cohort-namespaced strings ('cohort:id'); sort lexicographically.
+    source = san.combine_first(rec).sort_index()
     work = pd.DataFrame(index=source.index)
-    field(work, "work_id", source.index.astype(str), "Stable WORK_RECOMMENDATION_DTL_ID; never join the differently formatted WORK_ID columns", "03/04/05/06")
+    field(work, "work_id", source.index.astype(str), "Stable namespaced key 'cohort:mpkey:WORK_RECOMMENDATION_DTL_ID' (RS reuses raw ids across MPs); never join the differently formatted WORK_ID columns", "03/04/05/06")
+    field(work, "cohort", source.COHORT, "Source cohort: lok_sabha, rs_sitting or rs_retired; part of the namespaced work and MP keys", "01-06")
     mappings = {"mp_name":"MP_NAME", "state":"STATE_NAME", "ida_name":"IDA_NAME", "constituency":"CONSTITUENCY", "constituency_id":"CONSTITUENCY_ID", "house":"HOUSE_OF_PARLIAMENT", "tenure":"TENURE", "work_category":"WORK_CATEGORY", "activity_raw":"ACTIVITY_NAME", "description":"WORK_DESCRIPTION", "letter_no":"LETTER_NO"}
     for name, raw in mappings.items():
         field(work, name, source[raw], f"Original {raw}; sanctioned export preferred, recommendation export fallback", "04/03")
@@ -261,7 +278,7 @@ def duplicate_candidates(work):
             high=bool(sim>=.96 and same_amount and not(number_conflict or generic or phase[i] or phase[j]))
             eligible.append((sim,j,number_conflict,generic,high,same_amount,same))
         for sim,j,conflict,generic,high,same_amount,same in sorted(eligible,key=lambda x:(-x[0],ids[x[1]]))[:3]:
-            pair_id="pair:"+"-".join(sorted([ids[i],ids[j]],key=int))
+            pair_id="pair:"+"-".join(sorted([ids[i],ids[j]]))
             pairs.append({"pair_id":pair_id,"work_id_a":ids[j],"work_id_b":ids[i],"similarity":round(sim,6),"same_normalized_text":same,"same_amount":same_amount,"number_conflict":conflict,"generic_text":generic,"continuation_cue":bool(phase[i] or phase[j]),"high_similarity_review":high,"ida_key":ida[i],"activity_type":activity[i]})
             for k in (i,j):nearest[k]=max(nearest[k],sim);counts[k]+=1;strong[k]|=high
         for token in anchors:postings[(ida[i],activity[i],token)].append(i)
@@ -387,10 +404,11 @@ def dictionary(tables):
     return pd.DataFrame(rows)
 
 
-def build(input_dir,output_dir,as_of=AS_OF):
+def build(input_dir,output_dir,as_of=AS_OF,cohorts=None):
+    cohorts=list(cohorts or COHORTS)
     output_dir.mkdir(parents=True,exist_ok=True)
     print("1/8 Source contracts and quarantine",flush=True)
-    raw,source_audit,quarantine=load_sources(input_dir)
+    raw,source_audit,quarantine=load_sources(input_dir,cohorts)
     print("2/8 One-work master and payment aggregation",flush=True)
     work=connect_works(raw);work,payments=payments_and_links(raw["payments"],work)
     print("3/8 Lifecycle and strictly prior-year cost features",flush=True)
@@ -402,27 +420,35 @@ def build(input_dir,output_dir,as_of=AS_OF):
     print("6/8 MP, authority, vendor and monthly context",flush=True)
     tables={"Work_Features":work,"Payment_Features":payments,"Duplicate_Candidates":pairs,"Rule_Contributions":contributions,**entity_tables(raw,work,payments),"Quarantine":quarantine}
     tables["Feature_Dictionary"]=dictionary(tables)
+    # Expectations recomputed independently from the raw contracted sources (cohort-agnostic),
+    # a stronger reconciliation than hardcoded per-cohort literals.
+    rows_of=lambda src:sum(CONTRACTS[c][src][0] for c in cohorts)
+    rec_raw,san_raw,comp_raw,pay_raw=raw["recommended"],raw["sanctioned"],raw["completed"],raw["payments"]
+    alloc_raw,consent_raw=raw["allocations"],raw["consents"]
+    exp_works=len(set(rec_raw.WORK_RECOMMENDATION_DTL_ID)|set(san_raw.WORK_RECOMMENDATION_DTL_ID))
+    exp_success=int(money(pay_raw.FUND_DISBURSED_AMT).where(pay_raw.WORK_STATUS.eq("Payment Success"),0).sum())
+    exp_pending=int(money(pay_raw.FUND_DISBURSED_AMT).where(pay_raw.WORK_STATUS.eq("Payment In-Progress"),0).sum())
     checks={
-        "six_source_hashes_match_contract":all(s["sha256"]==EXPECTED[s["source"]][1] for s in source_audit),
-        "one_row_per_work":work.work_id.is_unique and len(work)==107937,
-        "recommended_membership_preserved":int(work.in_recommended.sum())==107562,
-        "sanctioned_membership_preserved":int(work.in_sanctioned.sum())==79881,
-        "completed_membership_preserved":int(work.in_completed.sum())==34940,
-        "accepted_plus_quarantine_equals_source":len(payments)+len(quarantine)==57349,
-        "successful_payment_sum_reconciles":int(work.successful_payment_paise.sum())==1750975681043,
-        "pending_payment_sum_reconciles":int(work.pending_payment_paise.sum())==96614379900,
-        "sanction_sum_reconciles":int(work.sanction_amount_paise.sum())==4208164095823,
-        "recommendation_sum_reconciles":int(work.recommended_amount_paise.sum())==5766648780611,
-        "completion_sum_reconciles":int(work.completion_actual_paise.sum())==1695840777340,
-        "allocation_sum_reconciles":int(tables["MP_Features"].allocated_paise.sum())==8333667329801,
-        "consent_sum_reconciles":int(tables["Calamity_Consents"].consent_amount_paise.sum())==4056740000,
-        "payment_source_rows_preserved":payments.source_record.is_unique and len(payments)==57348,
-        "all_payments_match_work":payments.work_id.isin(work.work_id).all(),
-        "all_completed_match_sanction":not (work.in_completed & ~work.in_sanctioned).any(),
-        "no_future_events_at_snapshot":not work.future_event_flag.any() and not payments.payment_date.gt(pd.Timestamp(as_of)).any(),
+        "source_hashes_match_contract":all(s["sha256"]==CONTRACTS[s["cohort"]][s["source"]][1] for s in source_audit),
+        "one_row_per_work":bool(work.work_id.is_unique) and len(work)==exp_works,
+        "recommended_membership_preserved":int(work.in_recommended.sum())==rows_of("recommended"),
+        "sanctioned_membership_preserved":int(work.in_sanctioned.sum())==rows_of("sanctioned"),
+        "completed_membership_preserved":int(work.in_completed.sum())==rows_of("completed"),
+        "accepted_plus_quarantine_equals_source":len(payments)+len(quarantine)==rows_of("payments"),
+        "successful_payment_sum_reconciles":int(work.successful_payment_paise.sum())==exp_success,
+        "pending_payment_sum_reconciles":int(work.pending_payment_paise.sum())==exp_pending,
+        "sanction_sum_reconciles":int(work.sanction_amount_paise.sum())==int(money(san_raw.SANCTION_AMOUNT).sum()),
+        "recommendation_sum_reconciles":int(work.recommended_amount_paise.sum())==int(money(rec_raw.RECOMMENDED_AMOUNT).sum()),
+        "completion_sum_reconciles":int(work.completion_actual_paise.sum())==int(money(comp_raw.ACTUAL_AMOUNT).sum()),
+        "allocation_sum_reconciles":int(tables["MP_Features"].allocated_paise.sum())==int(money(alloc_raw.ALLOCATED_AMT).sum()),
+        "consent_sum_reconciles":int(tables["Calamity_Consents"].consent_amount_paise.sum())==int(money(consent_raw.CONSENTED_AMOUNT).sum()),
+        "payment_source_rows_preserved":(not payments.duplicated(["COHORT","source_record"]).any()) and len(payments)==rows_of("payments")-len(quarantine),
+        "all_payments_match_work":bool(payments.work_id.isin(work.work_id).all()),
+        "all_completed_match_sanction":not bool((work.in_completed & ~work.in_sanctioned).any()),
+        "no_future_events_at_snapshot":not bool(work.future_event_flag.any()) and not bool(payments.payment_date.gt(pd.Timestamp(as_of)).any()),
         "rule_score_explanations_reconcile":np.array_equal(work.priority_score.to_numpy(),work.work_id.map(contributions.groupby("work_id").points.sum()).fillna(0).clip(upper=100).to_numpy()),
-        "pair_keys_unique":pairs.pair_id.is_unique,
-        "model_scores_finite":np.isfinite(work.isolation_score).all(),
+        "pair_keys_unique":bool(pairs.pair_id.is_unique),
+        "model_scores_finite":bool(np.isfinite(work.isolation_score).all()),
         "source_bytes_unchanged":all(sha(input_dir/s["file"])==s["sha256"] for s in source_audit),
     }
     require(all(checks.values()),"A core reconciliation check failed: "+str([k for k,v in checks.items() if not v]))
@@ -437,7 +463,7 @@ def build(input_dir,output_dir,as_of=AS_OF):
             db.execute(sql)
         db.execute("PRAGMA optimize")
     fingerprint=hashlib.sha256("|".join(s["sha256"] for s in source_audit).encode()).hexdigest()
-    meta={"version":VERSION,"as_of":as_of,"source_fingerprint":fingerprint,"work_features_sha256":sha(output_dir/"Work_Features.csv"),"pipeline_sha256":sha(Path(__file__)),"common_sha256":sha(Path(__file__).parent/"common.py"),"sources":source_audit,"checks":checks,"all_checks_passed":all(checks.values()),"table_shapes":{name:{"rows":len(f),"columns":len(f.columns)} for name,f in tables.items()},"scope":"18th Lok Sabha supplied exports, not all chambers or verified national completeness", "duplicate_method":duplicate_meta,
+    meta={"version":VERSION,"as_of":as_of,"source_fingerprint":fingerprint,"work_features_sha256":sha(output_dir/"Work_Features.csv"),"pipeline_sha256":sha(Path(__file__)),"common_sha256":sha(Path(__file__).parent/"common.py"),"sources":source_audit,"checks":checks,"all_checks_passed":all(checks.values()),"table_shapes":{name:{"rows":len(f),"columns":len(f.columns)} for name,f in tables.items()},"cohorts":cohorts,"scope":"Supplied exports for cohorts "+", ".join(cohorts)+"; cohort-namespaced work and MP keys; not all chambers or verified national completeness", "duplicate_method":duplicate_meta,
           "totals":{"works":len(work),"recommendations":int(work.in_recommended.sum()),"sanctions":int(work.in_sanctioned.sum()),"completions":int(work.in_completed.sum()),"payment_rows":len(payments),"successful_payment_paise":int(work.successful_payment_paise.sum()),"pending_payment_paise":int(work.pending_payment_paise.sum()),"sanction_paise":int(work.sanction_amount_paise.sum()),"recommended_paise":int(work.recommended_amount_paise.sum()),"completion_actual_paise":int(work.completion_actual_paise.sum()),"allocated_paise":int(tables["MP_Features"].allocated_paise.sum()),"quarantine_rows":len(quarantine),"repeat_excess_rows":int(payments.repeat_excess_row.sum()),"repeat_works":int(work.repeat_payment_report_flag.sum()),"repeat_sensitivity_success_paise":int(work.unique_fingerprint_sensitivity_paise.sum())},
           "rule_counts":{flag:int(work[flag].sum()) for flag,_,_,_ in RULES},"priority_counts":work.priority_band.value_counts().to_dict(),"rules":[{"field":f,"weight":v,"reason":l,"caution":c} for f,v,l,c in RULES],"research":SOURCES,
           "limits":["No independently adjudicated fraud labels, transaction IDs, invoices, revised-sanction ledger, unit quantities, approved due dates or complete progress event history.","Payment Success is used as reported settlement; Payment In-Progress is separate. Report duplicates are retained; sensitivity is not corrected expenditure.","No SC/ST beneficiary-area tags, trust master, geographic coordinates or asset images. These checks are unavailable, not passed.","Completion actual and vendor payments can differ because coverage, taxes/retention, timing and meanings are unresolved. No automatic fraud inference.","All new records, generated outputs and review notes remain local. Publication is not authorized by the previous three-source release.","Isolation Forest is descriptive full-snapshot atypicality and is separate from rule priority. No forecast accuracy is claimed."]}
@@ -450,7 +476,9 @@ def build(input_dir,output_dir,as_of=AS_OF):
 
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input-dir",type=Path,default=ROOT/"Dataset")
+    parser.add_argument("--input-dir",type=Path,default=ROOT/"Dataset",help="Dataset root holding the per-cohort subfolders")
     parser.add_argument("--output-dir",type=Path,default=Path(__file__).parent/"local")
+    parser.add_argument("--cohorts",nargs="+",choices=list(COHORTS),default=list(COHORTS),help="Cohorts to build (default: all three)")
+    parser.add_argument("--as-of",default=AS_OF,help="Snapshot assessment date YYYY-MM-DD")
     args=parser.parse_args()
-    build(args.input_dir,args.output_dir)
+    build(args.input_dir,args.output_dir,as_of=args.as_of,cohorts=args.cohorts)

@@ -254,7 +254,7 @@ Judges reward a **narrow slice that works end-to-end** (ingest → detect → sc
 
 1. **Consolidate the tree** — mark `six_source/` canonical; move superseded iterations to `archive/`; update `README` to point at the one true build+serve path.
 2. **Verify end-to-end on a clean machine** — `build.py` → reconciliation gate green → `serve.py` → workspace loads. Confirm the ~22 checks pass on the current dataset (row/hash contracts may need refreshing for the Rajya Sabha cohorts).
-3. **Multi-cohort** — generalize the hash contracts + `mp_key` to run Lok Sabha + Rajya Sabha sitting/retired in one namespaced build (`data_preparation` already reached 160,701 namespaced keys — fold that into `six_source`).
+3. **Multi-cohort** — DONE. `six_source` now builds Lok Sabha + Rajya Sabha sitting/retired together into 160,701 namespaced works. Keys are `cohort:mpkey:id` (RS reuses raw work ids across MPs); `mp_key` is cohort-namespaced; contracts are per-cohort hash-locked; reconciliation is recomputed from source (21 checks pass). `--cohorts` selects a subset.
 4. **Role dashboards** — Ministry heatmap + State comparison on top of existing MP/IDA rollups; keep the District workspace as the deep view.
 5. **Map view** — wire Leaflet; degrade gracefully while coordinates are unavailable (state/district choropleth from names).
 6. **NL→SQL agent** — LangGraph path over the read-only view, allow-listed schema, cited rows; one hero demo query.
