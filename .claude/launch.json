@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mplads-guard",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "run.ps1"],
+      "port": 8766,
+      "url": "http://localhost:8766"
+    }
+  ]
+}
