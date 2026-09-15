@@ -13,7 +13,7 @@ Full engineering plan: **[`FINAL_PROJECT_PLAN.md`](FINAL_PROJECT_PLAN.md)**. Dom
 | Path | Role |
 |---|---|
 | `Dataset/` | Immutable source CSVs, per cohort: `Lok Sabha/`, `Rajya_Sabha_sitting/`, `Rajya_Sabha_retired/`. Six files each (allocation, calamity consent, recommended, sanctioned, completed, expenditure). **Never edited.** All three build together into 160,701 works. |
-| `six_source/` | **Canonical engine.** `build.py` (data + feature + detection pipeline), `serve.py` (loopback investigation API), `nlq.py` (local deterministic natural-language query engine), `patterns.py` (relations/pattern report), `isolation.py` (vendored NumPy Isolation Forest), `common.py` (versioned contracts & hashes). |
+| `six_source/` | **Canonical engine.** `build.py` (data + feature + detection pipeline), `serve.py` (loopback investigation API), `nlq.py` (local deterministic natural-language query engine), `validate.py` (offline A/B screening comparison), `patterns.py` (relations/pattern report), `isolation.py` (vendored NumPy Isolation Forest), `common.py` (versioned contracts & hashes). |
 | `evaluation_18/` | Frozen offline A/B protocol + synthetic-injection benchmark (how the system is validated without fraud labels). |
 | `mplads-prototype/` | React 19 + Vite + TypeScript front-end (investigation workspace; `app/six-local.tsx`). |
 | `FINAL_PROJECT_PLAN.md` | Architecture, workflow, AI/ML, tech stack, data pipeline, execution order. |
@@ -35,8 +35,9 @@ cd six_source
 ..\.venv\Scripts\python build.py --output-dir local                    # all three cohorts (160,701 works)
 # ..\.venv\Scripts\python build.py --cohorts lok_sabha --output-dir local   # a single cohort
 
-# 3. Relations & patterns report (optional, after build)
+# 3. Relations & patterns report + offline A/B validation (optional, after build)
 ..\.venv\Scripts\python patterns.py
+..\.venv\Scripts\python validate.py
 
 # 4. Serve the local investigation API (loopback only)
 ..\.venv\Scripts\python serve.py --port 8766
@@ -115,13 +116,13 @@ Numbers are descriptive of the supplied 18th Lok Sabha exports, not verified nat
 
 `six_source/nlq.py` answers plain-English questions (*"Which districts in Bihar have the most delays?"*, *"States with the lowest settled-to-sanction ratio"*) **entirely locally** — a deterministic intent parser maps the question to an allow-listed, parameterised aggregate over `Work_Features`, and returns an interpretation, a source-tied summary, a formatted table, and the **exact generated SQL**. No external LLM, no data egress, no hallucination — every number is reproducible from the shown query. Served at `/api/ask`; the "Ask the data" tab exposes it with example prompts.
 
-## Validation (`evaluation_18/`)
+## Validation (`six_source/validate.py`, "A/B validation" tab)
 
-Two evidence layers, no fraud-accuracy claim:
-1. **Real-data retrospective queue comparison** — baseline vs enhanced at equal review budgets; report count, Jaccard overlap, displaced cases.
-2. **Controlled mechanism benchmark** — wholly synthetic coherent cases (9 positive + 9 hard-negative families), reference frozen to sanctions ≤ 31 Mar 2025; recovery difference at 10% budget with a paired bootstrap 95% interval.
+`validate.py` runs an offline A/B screening comparison on the six_source build and writes `local/ab_metrics.json` (served at `/api/validation`) plus `AB_Report.md` and CSVs. Two evidence layers, no fraud-accuracy claim:
+1. **Real retrospective queue comparison** — baseline **A** (seven operational/payment screens) vs enhanced **B** (A + cost-outlier + near-duplicate) on the actual build; report queue **overlap** (Jaccard) at equal review budgets.
+2. **Controlled mechanism benchmark** — seeded synthetic cases whose labels record which screen should fire. The two B-only families (inflated cost, near-duplicate) are scored zero by A, so B's advantage at a fixed budget comes from the enhancement. Reported as recovery per budget with a paired bootstrap 95% interval and per-family selection counts.
 
-See `evaluation_18/PROTOCOL.md` and `evaluation_18/README.md`.
+Representative result: at a 10% review budget B recovers ~100% vs A's ~78% (+~22 pp), because A ranks cost/duplicate cases as zero; at 5% both are equal (neither budget fits every positive). The earlier `evaluation_18/` protocol (`PROTOCOL.md`) informed this design but is coupled to the archived namespaced release.
 
 ---
 
