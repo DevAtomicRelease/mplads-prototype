@@ -108,6 +108,29 @@ function Sources({meta}:{meta:Row}) {
 
 const COHORT_LABEL: Record<string,string> = {lok_sabha:'Lok Sabha', rs_sitting:'Rajya Sabha (sitting)', rs_retired:'Rajya Sabha (retired)'};
 const heat = (frac: number) => `hsl(${Math.round(12 + 96 * Math.max(0, 1 - frac / 0.09))} 82% ${Math.round(94 - 34 * Math.min(1, frac / 0.09))}%)`;
+const normState = (s: string) => s.toLowerCase().replace(/&/g,'and').replace(/[^a-z ]/g,' ').replace(/\b(the|island|islands)\b/g,' ').replace(/\s+/g,' ').trim();
+const aliasState = (n: string) => (n.includes('dadra')||n.includes('daman'))?'dadra daman':n==='orissa'?'odisha':n==='uttaranchal'?'uttarakhand':n==='pondicherry'?'puducherry':n;
+const stateKey = (s: string) => aliasState(normState(s));
+
+function Choropleth({states,selected,onPick}:{states:Row[],selected:string,onPick:(s:string)=>void}) {
+  const geo=useData<Row>('/india-states.geojson');
+  const [hover,setHover]=useState<Row|null>(null);
+  const byKey=new Map(states.map(s=>[stateKey(s.state),s]));
+  const view=(()=>{
+    const g=geo.data;if(!g)return null;
+    let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+    for(const f of g.features)for(const poly of f.geometry.coordinates)for(const ring of poly)for(const p of ring){if(p[0]<minx)minx=p[0];if(p[0]>maxx)maxx=p[0];if(p[1]<miny)miny=p[1];if(p[1]>maxy)maxy=p[1];}
+    const W=440,sx=W/(maxx-minx),H=(maxy-miny)*sx;
+    const paths=g.features.map((f:Row)=>{let d='';for(const poly of f.geometry.coordinates){for(const ring of poly){ring.forEach((p:number[],i:number)=>{d+=(i?'L':'M')+((p[0]-minx)*sx).toFixed(1)+' '+((maxy-p[1])*sx).toFixed(1);});d+='Z';}}return {geo:f.properties.state,row:byKey.get(stateKey(f.properties.state)),d};});
+    return {W,H,paths};
+  })();
+  return <section className="s6-panel"><h3><MapPin size={16}/> State risk map</h3><p className="s6-note">Shaded by share of works in the High band. Hover for detail; click a state to see its district authorities. Telangana and Ladakh have no separate boundary in the base map and are not shaded.</p>
+    <Status error={geo.error} loading={!geo.data}/>
+    {view&&<div className="s6-mapwrap"><svg viewBox={`0 0 ${view.W} ${view.H}`} className="s6-map" role="img" aria-label="India state risk choropleth">{view.paths.map((p:Row)=>{const r=p.row;const f=r?r.high/r.works:null;const on=r&&selected===r.state;return <path key={p.geo} d={p.d} fill={f==null?'#e6eaee':heat(f)} stroke={on?'#0f2233':'#9fb0be'} strokeWidth={on?1.4:0.4} style={{cursor:r?'pointer':'default'}} onMouseEnter={()=>setHover(r||{state:p.geo,_nomatch:true})} onMouseLeave={()=>setHover(null)} onClick={()=>r&&onPick(selected===r.state?'':r.state)}/>;})}</svg>
+      <div className="s6-maplegend"><span>Lower</span><i style={{background:heat(0)}}/><i style={{background:heat(0.03)}}/><i style={{background:heat(0.05)}}/><i style={{background:heat(0.07)}}/><i style={{background:heat(0.09)}}/><span>Higher High-band share</span></div>
+      {hover&&<div className="s6-maptip">{hover._nomatch?<><strong>{hover.state}</strong><span>No matching works in this extract</span></>:<><strong>{hover.state}</strong><span>{count(hover.works)} works · {count(hover.high)} High ({(hover.high/hover.works*100).toFixed(1)}%)</span><span>{crore(hover.sanction_paise)} sanctioned</span></>}</div>}</div>}
+  </section>;
+}
 
 function Overview({inspect}:{inspect:(key:string,value:string)=>void}) {
   const [state,setState]=useState('');
@@ -128,6 +151,8 @@ function Overview({inspect}:{inspect:(key:string,value:string)=>void}) {
       <section className="s6-panel"><h3><TrendingUp size={16}/> Top states by high-priority works</h3><div className="s6-chart"><ResponsiveContainer width="100%" height={220}><BarChart data={topStates} margin={{top:4,right:8,bottom:4,left:8}}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" tick={{fontSize:11}} interval={0} angle={-30} textAnchor="end" height={54}/><YAxis tick={{fontSize:11}} allowDecimals={false}/><Tooltip/><Bar dataKey="High" fill="#c0392b" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer></div></section>
       <section className="s6-panel"><h3><TrendingUp size={16}/> Monthly settled payments (₹ cr)</h3><div className="s6-chart"><ResponsiveContainer width="100%" height={220}><LineChart data={trend} margin={{top:4,right:8,bottom:4,left:8}}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="month" tick={{fontSize:10}} interval={Math.ceil(trend.length/8)}/><YAxis tick={{fontSize:11}}/><Tooltip/><Line dataKey="Settled" stroke="#2563eb" dot={false} strokeWidth={2}/></LineChart></ResponsiveContainer></div><p className="s6-note">Reported settlement timing only; no waste is inferred from year-end spending.</p></section>
     </div>
+
+    <Choropleth states={d!.states} selected={state} onPick={setState}/>
 
     <section className="s6-panel"><h3><MapPin size={16}/> State risk heatmap</h3><p className="s6-note">Cell shade = share of works in the High band. Select a state to see its district authorities; use “Investigate” to open the filtered queue.</p>
       <div className="s6-heatwrap"><Table className="s6-heat"><TableHeader><TableRow>{['State / UT','Works','High','High %','Open &gt;1yr','Sanctioned','Settled/sanction','Mean priority',''].map(h=><TableHead key={h}>{h.replace('&gt;','>')}</TableHead>)}</TableRow></TableHeader><TableBody>{d!.states.map((s:Row)=>{const f=s.high/s.works;return <TableRow key={s.state} className={state===s.state?'s6-row-active':''}><TableCell><button className="s6-text" onClick={()=>setState(state===s.state?'':s.state)}>{s.state}</button></TableCell><TableCell>{count(s.works)}</TableCell><TableCell>{count(s.high)}</TableCell><TableCell><span className="s6-heatcell" style={{background:heat(f)}}>{(f*100).toFixed(1)}%</span></TableCell><TableCell>{count(s.open_over_year)}</TableCell><TableCell>{crore(s.sanction_paise)}</TableCell><TableCell>{percent(settledFrac(s))}</TableCell><TableCell>{Number(s.mean_priority).toFixed(1)}</TableCell><TableCell><button onClick={()=>inspect('state',s.state)}>Investigate<ArrowUpRight size={13}/></button></TableCell></TableRow>})}</TableBody></Table></div></section>
