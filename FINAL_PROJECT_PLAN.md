@@ -188,7 +188,7 @@ Supervised risk scoring trained on investigator feedback labels; CV ghost-asset 
 
 ## 6. Role-based dashboards & workspace
 
-Ship **depth over breadth**: build the District Authority + Ministry views well, then State Nodal and MP.
+All four personas now have a surface (Ministry heatmap, State drill, District workspace, MP view). Depth continues on the District workspace + Ministry heatmap.
 
 | Persona | Primary need | Key views |
 |---|---|---|
@@ -255,7 +255,7 @@ Judges reward a **narrow slice that works end-to-end** (ingest → detect → sc
 1. **Consolidate the tree** — mark `six_source/` canonical; move superseded iterations to `archive/`; update `README` to point at the one true build+serve path.
 2. **Verify end-to-end on a clean machine** — `build.py` → reconciliation gate green → `serve.py` → workspace loads. Confirm the ~22 checks pass on the current dataset (row/hash contracts may need refreshing for the Rajya Sabha cohorts).
 3. **Multi-cohort** — DONE. `six_source` now builds Lok Sabha + Rajya Sabha sitting/retired together into 160,701 namespaced works. Keys are `cohort:mpkey:id` (RS reuses raw work ids across MPs); `mp_key` is cohort-namespaced; contracts are per-cohort hash-locked; reconciliation is recomputed from source (21 checks pass). `--cohorts` selects a subset.
-4. **Role dashboards** — DONE (first cut). New `/api/overview` endpoint + an Overview tab: national + per-cohort KPIs, top-states bar, monthly-settled line, a state risk heatmap (shaded by High-band share) with per-state metrics, and highest-risk district authorities; clicking a state drills to its authorities (State Nodal view) and "Investigate" opens the filtered queue (District view). Next polish: map choropleth, MP self-view.
+4. **Role dashboards** — DONE (first cut). New `/api/overview` endpoint + an Overview tab: national + per-cohort KPIs, top-states bar, monthly-settled line, a state risk heatmap (shaded by High-band share) with per-state metrics, and highest-risk district authorities; clicking a state drills to its authorities (State Nodal view) and "Investigate" opens the filtered queue (District view). An **MP view** tab (member lookup → allocation/utilisation KPIs, work-progress funnel, traffic-light workload summary, an honest "unavailable, not passed" compliance panel, and their flagged works) completes the four personas. Next polish: map choropleth; wire evaluation_18 A/B into the Validation tab (currently coupled to the archived release).
 5. **Map view** — wire Leaflet; degrade gracefully while coordinates are unavailable (state/district choropleth from names).
 6. **NL→SQL agent** — DONE. Built as a *local, deterministic* intent parser (`six_source/nlq.py`) rather than an external LLM: it maps a plain-English question to an allow-listed, parameterised aggregate over `Work_Features` (plus vendor/month tables), and returns an interpretation, a source-tied summary, a formatted table, the exact generated SQL, and a caveat. No external service, no data egress, zero hallucination — every number reproducible from the shown SQL. Exposed at `/api/ask`; "Ask the data" tab in the UI with example prompts and drill-through. (A hosted-LLM path remains an optional future enhancement, gated on the same allow-listed SQL.)
 7. **Evaluation surfacing** — render `evaluation_18` A/B + synthetic-recovery results in the validation page as pitch evidence.
