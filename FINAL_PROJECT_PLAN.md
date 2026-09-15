@@ -150,7 +150,7 @@ Disclosed weights, capped at 100. Current registry (keep, extend when tags arriv
 | `high_cost_peer_flag` | 12 | high prior-FY peer amount | quantities/specs absent |
 | `high_similarity_review_flag` | 12 | similar work descriptions | distinct location/phase can be legit |
 
-Bands: `0` Routine · `1–19` Low · `20–39` Medium · `40–100` High. `reason_codes` + `Rule_Contributions` make every point traceable — this is the explainability judges look for.
+Bands: `0` Routine · `1–19` Low · `20–39` Medium · `40–80` High · `81–100` Critical. `reason_codes` + `Rule_Contributions` make every point traceable — this is the explainability judges look for. (`march_rush_flag`, weight 8, fires when ≥80% of a work's settled amount is disbursed in March — a year-end-rush screen. Critical is currently empty: the top observed score is 64, a legitimate result, and the band would populate for a genuinely extreme work.)
 
 **Roadmap rules (activate only with scheme-owner sign-off + the missing tags):** SC/ST 15%/7.5% allocation, ₹75 lakh trust ceiling, jurisdiction-of-recommendation. Keep them coded but **visibly inactive** until data supports them.
 
@@ -163,8 +163,10 @@ Weighted-token similarity with IDA·activity blocking (Section 4.4). Emits `Dupl
 ### 5.4 Vendor concentration (collusion *screen*, not proof)
 HHI of successful-payment share per `IDA·FY`, top-vendor share, edge list `vendor·MP·IDA·IA·FY`. Production path: build the MP–IDA–vendor–payment graph, community detection / GNN embeddings (roadmap, high wow-factor).
 
-### 5.5 Isolation Forest (unsupervised atypicality)
-Seeded 100-tree NumPy implementation, subsample 256; features = log sanction amount, sanction delay, completion days, days-since-last-success, cost z, paid/sanction ratio, vendor count, with median imputation + missing indicators. Output is a **descriptive full-snapshot percentile**, explicitly separate from the queue score and **not** a fraud probability or forecast.
+### 5.5 Unsupervised outliers (Isolation Forest + DBSCAN)
+Two independent unsupervised views over the same standardized features (log sanction amount, sanction delay, completion days, days-since-last-success, cost z, paid/sanction ratio, vendor count), both kept **separate from the rule queue** and both **descriptive, not fraud probabilities**:
+- **Isolation Forest** — seeded 100-tree NumPy implementation, subsample 256, median imputation + missing indicators; emits a full-snapshot atypicality percentile.
+- **DBSCAN** — density clustering (`dbscan_cluster`, `dbscan_outlier_flag`). To stay tractable and correct on 160k rows with heavy imputation, it clusters the **unique** rounded feature rows with a **count `sample_weight`** (so a repeated row is not mislabelled sparse) and maps labels back; `eps=0.9`, `min_samples=50` gives ~3.6% pattern outliers. It complements Isolation Forest (different points flagged). Geographic DBSCAN stays unavailable — the exports carry no coordinates.
 
 ### 5.6 Trend & early-warning analytics (label-free, buildable now)
 The PS explicitly asks for *predictive insights* and *early-warning mechanisms*. These do **not** require fraud labels and are built from the existing time fields:

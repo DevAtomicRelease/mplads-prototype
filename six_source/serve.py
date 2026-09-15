@@ -19,7 +19,7 @@ WORK_KEY=re.compile(r"[a-z_]+:[a-z0-9]*:\d+")
 ROOT=Path(__file__).resolve().parents[1]
 LOCAL=Path(__file__).parent/"local"
 SORTS={"priority_score","sanction_amount_paise","successful_payment_paise","sanction_age_days","isolation_percentile","work_id"}
-SIGNALS={"pending_recommendation_45d_flag","sanction_delay_45d_flag","open_over_one_year_flag","no_payment_three_months_flag","paid_over_sanction_flag","completion_over_sanction_flag","repeat_payment_report_flag","high_cost_peer_flag","high_similarity_review_flag","completion_without_payment_flag","description_changed_flag","recommendation_missing_flag"}
+SIGNALS={"pending_recommendation_45d_flag","sanction_delay_45d_flag","open_over_one_year_flag","no_payment_three_months_flag","paid_over_sanction_flag","completion_over_sanction_flag","repeat_payment_report_flag","march_rush_flag","high_cost_peer_flag","high_similarity_review_flag","dbscan_outlier_flag","completion_without_payment_flag","description_changed_flag","recommendation_missing_flag"}
 OUTCOMES={"Needs evidence","Expected variation","Data issue","Substantiated issue"}
 TABLES={"mps":("MP_Features","mp_name","successful_payment_paise"),"idas":("IDA_Features","ida_name","successful_payment_paise"),"vendors":("Vendor_Features","vendor_name","successful_payment_paise"),"payments":("Payment_Features","vendor_name","source_record"),"dictionary":("Feature_Dictionary","field","table")}
 
@@ -142,7 +142,7 @@ class Handler(SimpleHTTPRequestHandler):
                     if len(q)>300:raise ValueError("Question is limited to 300 characters")
                     return self.reply({**nlq.answer(db,q),"examples":nlq.EXAMPLES})
                 if route=="/api/overview":
-                    metrics="COUNT(*) works, SUM(in_sanctioned) sanctioned, SUM(in_completed) completed, SUM(CASE WHEN priority_band='High' THEN 1 ELSE 0 END) high, SUM(open_over_one_year_flag) open_over_year, SUM(no_payment_three_months_flag) no_payment_3m, SUM(sanction_amount_paise) sanction_paise, SUM(successful_payment_paise) successful_payment_paise, SUM(pending_payment_paise) pending_payment_paise, AVG(priority_score) mean_priority"
+                    metrics="COUNT(*) works, SUM(in_sanctioned) sanctioned, SUM(in_completed) completed, SUM(CASE WHEN priority_band IN ('High','Critical') THEN 1 ELSE 0 END) high, SUM(open_over_one_year_flag) open_over_year, SUM(no_payment_three_months_flag) no_payment_3m, SUM(sanction_amount_paise) sanction_paise, SUM(successful_payment_paise) successful_payment_paise, SUM(pending_payment_paise) pending_payment_paise, AVG(priority_score) mean_priority"
                     national=dict(db.execute(f"SELECT {metrics}, COUNT(DISTINCT mp_key) mp_count, COUNT(DISTINCT ida_key) ida_count FROM Work_Features").fetchone())
                     cohorts=[dict(r) for r in db.execute(f"SELECT cohort, {metrics} FROM Work_Features GROUP BY cohort ORDER BY works DESC")]
                     states=[dict(r) for r in db.execute(f"SELECT state, {metrics} FROM Work_Features GROUP BY state ORDER BY high DESC")]

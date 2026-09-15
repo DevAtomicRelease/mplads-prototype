@@ -59,7 +59,7 @@ def report(local: Path) -> str:
     P("```")
     P(work.priority_band.value_counts().to_string())
     P("```")
-    rules = ["pending_recommendation_45d_flag", "sanction_delay_45d_flag", "open_over_one_year_flag", "no_payment_three_months_flag", "paid_over_sanction_flag", "completion_over_sanction_flag", "repeat_payment_report_flag", "high_cost_peer_flag", "high_similarity_review_flag"]
+    rules = ["pending_recommendation_45d_flag", "sanction_delay_45d_flag", "open_over_one_year_flag", "no_payment_three_months_flag", "paid_over_sanction_flag", "completion_over_sanction_flag", "repeat_payment_report_flag", "march_rush_flag", "high_cost_peer_flag", "high_similarity_review_flag"]
     for r in rules:
         P(f"- {r}: {int(work[r].sum()):,} ({work[r].mean() * 100:.1f}%)")
     P(f"- works with >=1 flag: {int((work.priority_score > 0).sum()):,} ({(work.priority_score > 0).mean() * 100:.1f}%)\n")
@@ -117,7 +117,11 @@ def report(local: Path) -> str:
     hi_pri = work.priority_band == "High"
     both = int((hi_iso & hi_pri).sum())
     P(f"- Isolation Forest top 1%: {int(hi_iso.sum()):,}; also rule High-band: {both:,} (overlap {both / max(int(hi_iso.sum()), 1) * 100:.0f}%).")
-    P("  Low overlap is intended: the unsupervised model surfaces atypicality the rules miss, and vice-versa.\n")
+    P("  Low overlap is intended: the unsupervised model surfaces atypicality the rules miss, and vice-versa.")
+    if "dbscan_outlier_flag" in work.columns:
+        dbo = work.dbscan_outlier_flag.astype(bool)
+        P(f"- DBSCAN pattern outliers: {int(dbo.sum()):,} ({dbo.mean()*100:.1f}%); also Isolation top 1%: {int((dbo & hi_iso).sum()):,}. Two independent unsupervised views, kept separate from the rule queue.")
+    P("")
 
     db.close()
     return "\n".join(out)

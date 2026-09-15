@@ -94,7 +94,7 @@ EXAMPLES = [
 
 WF_SELECT = (
     "COUNT(*) works, "
-    "SUM(CASE WHEN priority_band='High' THEN 1 ELSE 0 END) high, "
+    "SUM(CASE WHEN priority_band IN ('High','Critical') THEN 1 ELSE 0 END) high, "
     "SUM(open_over_one_year_flag) open_over_year, "
     "SUM(no_payment_three_months_flag) no_payment_3m, "
     "SUM(in_completed) completed, "

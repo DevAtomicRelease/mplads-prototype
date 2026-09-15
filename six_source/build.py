@@ -17,6 +17,7 @@ from common import AS_OF, COHORTS, CONTRACTS, FILES, ROOT, SEED, SOURCES, VERSIO
 
 # Vendored NumPy Isolation Forest; no cross-directory runtime dependency.
 from isolation import isolation_scores
+from sklearn.cluster import DBSCAN
 
 DEFS = {}
 STOP = set("a an the of for and at in to with from by near construction installation purchase providing work works supply development village gram panchayat ward no number district block under proposed new existing".split())
@@ -137,8 +138,9 @@ def payments_and_links(raw, work):
     p["fiscal_year"] = fy(p.payment_date)
     p["payment_month"] = p.payment_date.dt.strftime("%Y-%m")
     p["march_payment_flag"] = p.payment_date.dt.month.eq(3)
+    p["march_successful_paise"] = p.successful_paise.where(p.march_payment_flag, 0)
     p["repeat_excess_row"] = ~p.fingerprint_first_row
-    agg = p.groupby("work_id").agg(payment_row_count=("work_id","size"), successful_payment_count=("is_success","sum"), successful_payment_paise=("successful_paise","sum"), pending_payment_paise=("pending_paise","sum"), unique_fingerprint_sensitivity_paise=("fingerprint_sensitivity_paise","sum"), repeated_report_excess_rows=("repeat_excess_row","sum"), vendor_count=("vendor_id","nunique"), implementing_agency_count=("ia_name","nunique"), first_payment_date=("payment_date","min"), last_payment_date=("payment_date","max"), payment_before_sanction_flag=("payment_before_sanction_flag","max"), payment_after_completion_count=("payment_after_completion_flag","sum"))
+    agg = p.groupby("work_id").agg(payment_row_count=("work_id","size"), successful_payment_count=("is_success","sum"), successful_payment_paise=("successful_paise","sum"), pending_payment_paise=("pending_paise","sum"), march_successful_paise=("march_successful_paise","sum"), unique_fingerprint_sensitivity_paise=("fingerprint_sensitivity_paise","sum"), repeated_report_excess_rows=("repeat_excess_row","sum"), vendor_count=("vendor_id","nunique"), implementing_agency_count=("ia_name","nunique"), first_payment_date=("payment_date","min"), last_payment_date=("payment_date","max"), payment_before_sanction_flag=("payment_before_sanction_flag","max"), payment_after_completion_count=("payment_after_completion_flag","sum"))
     settled = p.loc[p.is_success].groupby("work_id").payment_date.agg(first_success_date="min",last_success_date="max")
     agg = agg.join(settled)
     descriptions = {
@@ -146,6 +148,7 @@ def payments_and_links(raw, work):
         "successful_payment_count":"Observed Payment Success rows; repeated report rows retained",
         "successful_payment_paise":"Sum of Payment Success amounts in integer paise; reported settlement, not independently bank-reconciled",
         "pending_payment_paise":"Payment In-Progress sum, excluded from settled expenditure",
+        "march_successful_paise":"Sum of Payment Success amounts dated in March (financial year-end); year-end disbursement is not itself misuse",
         "unique_fingerprint_sensitivity_paise":"Sensitivity only: one successful report row per identical fingerprint; not corrected expenditure or proven duplicate-payment removal",
         "repeated_report_excess_rows":"Identical report rows beyond first after excluding Sno; no transaction/invoice ID to establish duplicate payment",
         "vendor_count":"Distinct stable vendor IDs on observed payment rows",
@@ -204,6 +207,8 @@ def lifecycle_features(work, as_of):
     field(work,"paid_over_sanction_flag",work.payment_sanction_delta_paise.gt(1).fillna(False),"Reported successful payments exceed sanction by more than one paise; investigate revised orders","04/06")
     field(work,"completion_over_sanction_flag",work.completion_sanction_delta_paise.gt(1).fillna(False),"Reported completion actual exceeds sanction by more than one paise; investigate revised orders","04/05")
     field(work,"repeat_payment_report_flag",work.repeated_report_excess_rows.gt(0),"At least one repeated report fingerprint; payment duplication unproven","06")
+    field(work,"march_settled_share",ratio(work.march_successful_paise,work.successful_payment_paise).where(work.has_successful_payment_evidence),"Share of settled amount disbursed in March; null without settlement evidence","06")
+    field(work,"march_rush_flag",(work.has_successful_payment_evidence & work.march_successful_paise.gt(0) & work.march_settled_share.ge(0.8)).fillna(False),"At least 80% of settled amount disbursed in March (financial year-end); verify progress at time of payment, not itself misuse","06")
     field(work,"completion_evidence_mismatch_flag",work.completion_payment_gap_paise.abs().gt(10000).fillna(False),"More than INR 100 difference between completion actual and observed successful payment sum; informational reconciliation","05/06")
     field(work,"description_normalized",work.description.map(norm),"Unicode-normalized text for local candidate generation; original retained","03/04")
     field(work,"continuation_cue_flag",work.description_normalized.str.contains(r"\b(?:phase|continued|continue|continuation|extension|part|repair|renovation)\b",regex=True),"Text suggests distinct phase/repair/extension; lowers duplicate certainty","03/04")
@@ -298,6 +303,7 @@ RULES = [
     ("paid_over_sanction_flag",30,"Reported payments exceed sanction","Check revised sanction and reconciliation"),
     ("completion_over_sanction_flag",25,"Completion actual exceeds sanction","Check approved scope and revised sanction"),
     ("repeat_payment_report_flag",15,"Repeated payment report rows","Transaction IDs needed to decide duplication"),
+    ("march_rush_flag",8,"Year-end (March) disbursement concentration","Year-end disbursement can be legitimate; verify progress at payment"),
     ("high_cost_peer_flag",12,"High prior-year peer amount","Quantities, unit costs and specifications absent"),
     ("high_similarity_review_flag",12,"Similar work descriptions","Distinct locations/phases can be legitimate"),
 ]
@@ -312,7 +318,7 @@ def scores(work):
         for index in np.flatnonzero(value.to_numpy()):
             contributions.append({"work_id":work.iloc[index].work_id,"rule":flag,"points":weight,"reason":label,"caution":caution})
     field(work,"priority_score",np.minimum(raw,100).astype(int),"Sum of disclosed screening weights, capped at 100; not a probability or calibrated fraud model","Rule registry")
-    field(work,"priority_band",pd.cut(work.priority_score,bins=[-1,0,19,39,100],labels=["Routine","Low","Medium","High"]).astype(str),"Queue bands: 0 Routine; 1-19 Low; 20-39 Medium; 40-100 High","Rule registry")
+    field(work,"priority_band",pd.cut(work.priority_score,bins=[-1,0,19,39,80,100],labels=["Routine","Low","Medium","High","Critical"]).astype(str),"Queue bands: 0 Routine; 1-19 Low; 20-39 Medium; 40-80 High; 81-100 Critical","Rule registry")
     flags=[r[0] for r in RULES]
     field(work,"reason_codes",work[flags].apply(lambda r:";".join(c for c in flags if r[c]),axis=1),"Semicolon-separated active screening rules; exact contributions in Rule_Contributions","Rule registry")
     dq=["recommendation_missing_flag","description_changed_flag","missing_description_flag","negative_chronology_flag","future_event_flag"]
@@ -326,6 +332,19 @@ def scores(work):
     values=isolation_scores(x,seed=SEED,tree_count=100,sample_size=256)
     field(work,"isolation_score",values,"Seeded 100-tree NumPy Isolation Forest, sample 256; median imputation and missing indicators; descriptive full-snapshot atypicality","IFOREST","Full-snapshot fit; not held-out forecast or fraud probability")
     field(work,"isolation_percentile",pd.Series(values).rank(pct=True,method="average")*100,"Average-tie percentile of model atypicality within this extract; separate from rule priority","IFOREST","Full-snapshot fit")
+    # Density-based clustering over the same standardized features; a second, independent
+    # unsupervised view. Noise (label -1) marks works far from any dense group of peers.
+    base=np.column_stack([np.log1p(work.sanction_amount_paise.astype(float).fillna(0)/100),work[columns].to_numpy(float)])
+    med=np.nan_to_num(np.nanmedian(base,axis=0));base=np.where(np.isnan(base),med,base)
+    scale=base.std(axis=0);scale[scale==0]=1;z=(base-base.mean(axis=0))/scale
+    # Many works share identical imputed feature rows; cluster the unique rows with a
+    # count weight (min_samples is in works), then map labels back. Keeps DBSCAN tractable
+    # on 160k rows and stops a dense repeated row from being mislabelled as sparse noise.
+    uniq,inverse=np.unique(np.round(z,1),axis=0,return_inverse=True)
+    weights=np.bincount(inverse).astype(float)
+    labels=DBSCAN(eps=0.9,min_samples=50).fit_predict(uniq,sample_weight=weights)[inverse]
+    field(work,"dbscan_cluster",pd.Series(labels,dtype="Int64"),"Density cluster over standardized work features (log sanction, delays, cost z, paid ratio, vendor count); -1 is a low-density pattern outlier","DBSCAN","Full-snapshot fit; separate from rules and Isolation Forest")
+    field(work,"dbscan_outlier_flag",labels==-1,"Not placed in any dense cluster of similar works; a pattern outlier to inspect, never a fraud finding","DBSCAN","Full-snapshot fit")
     return work,pd.DataFrame(contributions,columns=["work_id","rule","points","reason","caution"])
 
 
@@ -338,7 +357,7 @@ def entity_tables(tables,work,payments):
     consent["consent_amount_paise"]=money(consent.CONSENTED_AMOUNT);consent["consent_date"]=dates(consent.CRT_DT);consent["fiscal_year"]=fy(consent.consent_date)
     consent["work_link_available"]=False
     def grouped(key):
-        return work.groupby(key).agg(work_count=("work_id","size"),recommended_record_count=("in_recommended","sum"),sanctioned_count=("in_sanctioned","sum"),completed_count=("in_completed","sum"),recommended_paise=("recommended_amount_paise",lambda x:x.sum(min_count=1)),sanction_paise=("sanction_amount_paise",lambda x:x.sum(min_count=1)),successful_payment_paise=("successful_payment_paise","sum"),pending_payment_paise=("pending_payment_paise","sum"),open_over_one_year_count=("open_over_one_year_flag","sum"),no_payment_three_months_count=("no_payment_three_months_flag","sum"),high_priority_count=("priority_band",lambda x:x.eq("High").sum()),mean_priority=("priority_score","mean"))
+        return work.groupby(key).agg(work_count=("work_id","size"),recommended_record_count=("in_recommended","sum"),sanctioned_count=("in_sanctioned","sum"),completed_count=("in_completed","sum"),recommended_paise=("recommended_amount_paise",lambda x:x.sum(min_count=1)),sanction_paise=("sanction_amount_paise",lambda x:x.sum(min_count=1)),successful_payment_paise=("successful_payment_paise","sum"),pending_payment_paise=("pending_payment_paise","sum"),open_over_one_year_count=("open_over_one_year_flag","sum"),no_payment_three_months_count=("no_payment_three_months_flag","sum"),high_priority_count=("priority_band",lambda x:x.isin(["High","Critical"]).sum()),mean_priority=("priority_score","mean"))
     mp=alloc.rename(columns={"MP_NAME":"mp_name","STATE_NAME":"state","CONSTITUENCY":"constituency","source_record":"allocation_source_record"})
     mp["allocated_paise"]=money(mp.ALLOCATED_AMT)
     mp=mp.merge(grouped("mp_key"),on="mp_key",how="left",validate="one_to_one")
