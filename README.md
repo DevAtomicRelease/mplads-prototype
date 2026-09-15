@@ -80,6 +80,8 @@ npm run build:six     # emits dist/six/ ; then `python ../six_source/serve.py` s
 
 Reproducible: fixed `SEED=26102`; pipeline/common SHA recorded in `audit.json`; independent rebuild comparable by output hash.
 
+**Tests:** `python six_source/tests.py` runs 14 fast invariant checks (build reconciliation, namespaced-key uniqueness, score↔contribution equality, band thresholds, unsupervised-signal consistency, NL-query injection-safety/determinism, A/B properties). `python six_source/tests.py --rebuild` adds an end-to-end reproducibility check (fresh rebuild → identical `Work_Features.csv` hash).
+
 ### Detection layers → problem-statement asks
 
 - **Financial** — cost outliers (prior-FY robust log-MAD z), payment/completion-vs-sanction deltas, repeated-payment-report sensitivity, vendor concentration (HHI).
