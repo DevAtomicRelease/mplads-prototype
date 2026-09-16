@@ -13,70 +13,80 @@ Full engineering plan: **[`FINAL_PROJECT_PLAN.md`](FINAL_PROJECT_PLAN.md)**. Dom
 | Path | Role |
 |---|---|
 | `Dataset/` | Immutable source CSVs, per cohort: `Lok Sabha/`, `Rajya_Sabha_sitting/`, `Rajya_Sabha_retired/`. Six files each (allocation, calamity consent, recommended, sanctioned, completed, expenditure). **Never edited.** All three build together into 160,701 works. |
-| `six_source/` | **Canonical engine.** `build.py` (data + feature + detection pipeline), `serve.py` (loopback investigation API), `nlq.py` (local deterministic natural-language query engine), `validate.py` (offline A/B screening comparison), `patterns.py` (relations/pattern report), `isolation.py` (vendored NumPy Isolation Forest), `common.py` (versioned contracts & hashes). |
-| `evaluation_18/` | Frozen offline A/B protocol + synthetic-injection benchmark (how the system is validated without fraud labels). |
+| `run.ps1` | One-command launcher: venv → build → front-end → serve. See **Run & test** below. |
+| `six_source/` | **Canonical engine.** `build.py` (data + feature + detection pipeline), `serve.py` (loopback investigation API), `nlq.py` (local deterministic natural-language query engine), `validate.py` (offline A/B screening comparison), `patterns.py` (relations/pattern report), `isolation.py` (vendored NumPy Isolation Forest), `tests.py` (invariant tests), `common.py` (versioned contracts & hashes). |
 | `mplads-prototype/` | React 19 + Vite + TypeScript front-end (investigation workspace; `app/six-local.tsx`). |
-| `FINAL_PROJECT_PLAN.md` | Architecture, workflow, AI/ML, tech stack, data pipeline, execution order. |
+| `evaluation_18/` | The earlier frozen A/B protocol (reference; superseded by `six_source/validate.py`). |
+| `FINAL_PROJECT_PLAN.md`, `CLAUDE.md` | Full plan; contributor/agent guide. |
 | `archive/` | Superseded three-source iteration, kept for provenance only. See `archive/README.md`. |
 
 ---
 
-## Quick start (Windows, PowerShell)
+## Run & test the full project
 
-Python 3.12 recommended.
+Python 3.12; Node 22+ only for building the UI. Everything runs locally on `127.0.0.1`.
+
+### One command (Windows, PowerShell)
 
 ```powershell
-# 1. Environment
+.\run.ps1
+```
+
+First run creates the virtual environment, builds the dataset (**build → patterns → A/B validation**) and the front-end if they are missing, then serves the app at **http://127.0.0.1:8766/**. `-Rebuild` forces a fresh dataset build; `-Port <n>` changes the port. (Desktop app: the `mplads-guard` preview in `.claude/launch.json` runs this.)
+
+### Step by step
+
+```powershell
+# 1. Python environment
 python -m venv .venv
-.\.venv\Scripts\python -m pip install numpy pandas openpyxl
+.\.venv\Scripts\python -m pip install -r six_source/requirements.txt   # numpy, pandas, scikit-learn, openpyxl
 
-# 2. Build the connected, audited dataset
+# 2. Build the connected, audited dataset — all cohorts -> 160,701 works, 21/21 checks
 cd six_source
-..\.venv\Scripts\python build.py --output-dir local                    # all three cohorts (160,701 works)
-# ..\.venv\Scripts\python build.py --cohorts lok_sabha --output-dir local   # a single cohort
+..\.venv\Scripts\python build.py
+# ..\.venv\Scripts\python build.py --cohorts lok_sabha          # a single cohort
 
-# 3. Relations & patterns report + offline A/B validation (optional, after build)
-..\.venv\Scripts\python patterns.py
-..\.venv\Scripts\python validate.py
+# 3. Reports (after build)
+..\.venv\Scripts\python patterns.py     # -> local/DATA_PATTERNS.md   (relations & patterns)
+..\.venv\Scripts\python validate.py     # -> local/ab_metrics.json + AB_Report.md (offline A/B)
 
-# 4. Serve the local investigation API (loopback only)
+# 4. Tests — 14 fast invariant checks
+..\.venv\Scripts\python tests.py
+# ..\.venv\Scripts\python tests.py --rebuild    # + reproducibility (fresh rebuild -> identical hash)
+
+# 5. Front-end (needs Node; once)
+cd ..\mplads-prototype
+npm ci                 # install dependencies (fresh clone / first run)
+npm run build:six      # emits dist/six/
+
+# 6. Serve the local app + API (loopback only)
+cd ..\six_source
 ..\.venv\Scripts\python serve.py --port 8766
 ```
 
-`build.py` refuses to run unless every source file's row count **and** SHA-256 match the frozen contract in `common.py`, and it fails closed unless all 21 reconciliation checks pass. Outputs (CSV + indexed `mplads.sqlite3` + `audit.json`) land in `six_source/local/` (git-ignored; local by design).
+Open **http://127.0.0.1:8766/**. `build.py` fails closed unless every source file's row count **and** SHA-256 match the frozen contract in `common.py` and all 21 reconciliation checks pass. Outputs (CSV + indexed `mplads.sqlite3` + `audit.json`) land in `six_source/local/` (git-ignored; local by design).
 
-### Front-end
-
-The six-source UI has its own Vite config (`vite.six.config.ts`): entry `six.html` → `app/six-local.tsx`, output `dist/six/`, dev proxy `/api` → `127.0.0.1:8766` (matching `serve.py`).
+### Front-end development
 
 ```powershell
 cd mplads-prototype
-npm ci                # first time only (node_modules already present here)
-
-# Development: hot-reload UI + live backend
-npm run dev:six       # Vite dev server at http://127.0.0.1:3001, proxies /api to :8766
-#   (run `python ../six_source/serve.py` in another shell)
-
-# Production static build the backend serves itself
-npm run build:six     # emits dist/six/ ; then `python ../six_source/serve.py` serves it at /
+npm run dev:six        # Vite hot-reload at http://127.0.0.1:3001, proxies /api to :8766
 ```
 
-`serve.py` serves `dist/six/` at the web root (`/` → `six.html`) and handles `/api/*` from the read-only SQLite. Verified end-to-end: build → serve → `/api/health`, `/api/works`, static assets.
-
-> The legacy three-source UI (`index.html` → `app/local.tsx`, `dist/local`) and its `serve_local.py` are retained under the old entry but are superseded by the six-source path above.
+Run `python ../six_source/serve.py` in another shell. The six-source UI has its own config `vite.six.config.ts` (entry `six.html` → `app/six-local.tsx`, output `dist/six/`); `serve.py` serves `dist/six/` at the web root and handles `/api/*` from the read-only SQLite. The legacy three-source UI (`index.html` → `dist/local`) is retained but superseded.
 
 ---
 
 ## Data pipeline (what `build.py` does)
 
-1. **Contracts & quarantine** — hash-lock every source; quarantine invalid rows (one truncated expenditure row) without touching source files.
-2. **One-work master** — union recommendation ∪ sanction → **107,937 works**, one row each; sanction export governs sanctioned fields. Money kept in **integer paise**.
-3. **Lifecycle + cost features** — aging, chronology flags, and cost benchmarks computed from **prior fiscal years only** (leakage guard).
+1. **Contracts & quarantine** — hash-lock every source (per cohort); quarantine invalid rows (one truncated expenditure row) without touching source files.
+2. **One-work master** — union recommendation ∪ sanction across all cohorts → **160,701 works**, one row each; sanction export governs sanctioned fields. Keys are namespaced `cohort:mpkey:id` (the Rajya Sabha portal reuses work ids across MPs). Money kept in **integer paise**.
+3. **Lifecycle + cost features** — aging, chronology flags, year-end (March) disbursement share, and cost benchmarks computed from **prior fiscal years only** (leakage guard).
 4. **Bounded duplicate candidates** — normalized-text, IDA·activity-blocked, weighted-token similarity with number/generic/phase guards.
-5. **Explained rules + separate model** — deterministic rule engine → `priority_score` (capped 100) + per-point `Rule_Contributions`; a **separate** Isolation Forest `isolation_percentile`.
+5. **Explained rules + separate unsupervised models** — a 10-rule deterministic engine → `priority_score` (capped 100) + per-point `Rule_Contributions` and 5 bands (Routine/Low/Medium/High/Critical); plus two **separate** descriptive views kept out of the queue — an Isolation Forest `isolation_percentile` and a DBSCAN `dbscan_outlier_flag`.
 6. **Entity rollups** — MP, IDA, vendor, vendor-connection edges, IDA·FY concentration (HHI), monthly payments.
 7. **Outputs** — CSV + indexed SQLite + `audit.json` + `review_workbook.json`.
-8. **Reconciliation gate** — 21 checks (membership counts, paise-exact money sums, score↔contribution equality, no future events, source bytes unchanged).
+8. **Reconciliation gate** — 21 checks (membership counts, paise-exact money sums recomputed from source, score↔contribution equality, no future events, source bytes unchanged); build fails closed on any failure.
 
 Reproducible: fixed `SEED=26102`; pipeline/common SHA recorded in `audit.json`; independent rebuild comparable by output hash.
 
@@ -86,9 +96,9 @@ Reproducible: fixed `SEED=26102`; pipeline/common SHA recorded in `audit.json`; 
 
 - **Financial** — cost outliers (prior-FY robust log-MAD z), payment/completion-vs-sanction deltas, repeated-payment-report sensitivity, vendor concentration (HHI).
 - **Execution** — duplicate/near-duplicate works, stalled-open aging, sanction delay, completion-without-payment.
-- **Compliance** — deterministic rules: sanction delay >45d, open >1yr, no payment >3mo. (SC/ST %, ₹75L trust ceiling, jurisdiction: coded but **inactive** until the required tags exist.)
+- **Compliance & operations** — deterministic rules: sanction delay >45d, open >1yr, no payment >3mo, year-end (March) disbursement concentration. (SC/ST %, ₹75L trust ceiling, jurisdiction, payment-vs-physical-progress: **unavailable** — the exports carry no beneficiary tags, trust register, coordinates or physical-progress %, so these are shown unavailable, not passed.)
 - **Inefficiency** — utilization ratios and category mix at MP/IDA grain.
-- **Unsupervised** — Isolation Forest atypicality, deliberately separate from the rule queue.
+- **Unsupervised** — Isolation Forest atypicality and DBSCAN feature-space outliers, both deliberately separate from the rule queue and complementary to each other.
 
 Supervised fraud classification is **Phase-2**, unlocked once investigators label reviewed cases through the feedback loop.
 
@@ -96,21 +106,16 @@ Supervised fraud classification is **Phase-2**, unlocked once investigators labe
 
 ## What the data shows
 
-Generated by `six_source/patterns.py` (full report in `six_source/local/DATA_PATTERNS.md`). All-cohort build = **160,701 works** across Lok Sabha + Rajya Sabha (sitting/retired); the Rajya Sabha portal reuses `WORK_RECOMMENDATION_DTL_ID` across MPs, so keys are namespaced `cohort:mpkey:id`. Settled-vs-sanction differs sharply by cohort: **LS 41.6%, RS-sitting 70.9%, RS-retired 78.4%**.
+Generated by `six_source/patterns.py` (full report in `six_source/local/DATA_PATTERNS.md`). All-cohort build = **160,701 works** across Lok Sabha + Rajya Sabha (sitting/retired). Settled-vs-sanction differs sharply by cohort: **LS 41.6%, RS-sitting 70.9%, RS-retired 78.4%**.
 
-Lok Sabha cohort snapshot:
+- **Funnel:** 159,794 recommended → 124,155 sanctioned → 61,268 completed.
+- **Queue:** 129,248 works (80.4%) carry ≥1 screen; bands Routine 31,453 / Low 84,348 / Medium 38,277 / High 6,623 / Critical 0.
+- **Dominant signals:** sanction-delay >45d proxy 86,264 (53.7%), no-payment-after-3mo 37,067, pending-recommendation >45d 24,936, open >1yr 18,947, year-end (March) rush 5,899.
+- **Anomaly signals:** high-cost-peer 4,792, near-duplicate-review 6,521 (35,452 candidate pairs), DBSCAN pattern outliers 5,748.
+- **Integrity result:** `paid_over_sanction` = 1 and `completion_over_sanction` = 0 — a legitimate near-clean result on the supplied fields, not a masked failure.
+- **Critical band = 0:** the top observed score is 64; the 81–100 tier is empty and would populate for a genuinely extreme work.
 
-- **Funnel:** 107,562 recommended → 79,881 sanctioned (74.3%) → 34,940 completed (43.7% of sanctioned). **44,941 works open.**
-- **Money:** Rs 5,767 cr recommended, Rs 4,208 cr sanctioned, **Rs 1,751 cr settled (41.6% of sanction)**; allocation snapshot Rs 8,334 cr.
-- **Queue:** 80.2% of works carry ≥1 screen; bands High 4,642 / Medium 28,503 / Low 53,393 / Routine 21,399.
-- **Dominant signals:** sanction-delay >45d proxy 52.2%, no-payment-after-3mo 29.8%, pending-recommendation >45d 16.3%, open >1yr 10.0%.
-- **Integrity result:** `paid_over_sanction` and `completion_over_sanction` are **0** — a legitimate clean result on the supplied fields, not a masked failure.
-- **Cost:** 63,629 works get a prior-FY peer benchmark; 4,509 high-cost-peer flags; extreme ratios up to ~286×.
-- **Duplicates:** 23,798 candidate pairs, 8,881 high-similarity-review, touching 11,610 works.
-- **Vendors:** 20,763 distinct IDs; 1,715 same-name-different-ID collisions (kept distinct, never merged); 474 IDA·FY groups with HHI>0.5, 233 single-vendor.
-- **Model vs rules:** Isolation-Forest top 1% overlaps rule High-band by only ~2% — the two layers are complementary by design.
-
-Numbers are descriptive of the supplied 18th Lok Sabha exports, not verified national totals.
+Numbers are descriptive of the supplied exports, not verified national totals.
 
 ---
 
