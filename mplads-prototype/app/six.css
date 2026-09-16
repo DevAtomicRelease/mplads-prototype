@@ -22,3 +22,4 @@
 .s6-maplegend{display:flex;align-items:center;gap:4px;justify-content:center;margin-top:10px;font-size:12px;color:#4e6173}.s6-maplegend i{width:26px;height:12px;display:inline-block;border:1px solid #cdd8e1}
 .s6-maptip{position:absolute;top:8px;left:8px;background:rgba(15,34,51,.94);color:#fff;padding:8px 11px;border-radius:6px;font-size:12px;pointer-events:none;max-width:230px}.s6-maptip strong{display:block;font-size:13px;margin-bottom:2px}.s6-maptip span{display:block;opacity:.9}
 .s6-critical{background:#7a1420;color:#fff}
+.band-critical{background:#7a1420;color:#fff}
