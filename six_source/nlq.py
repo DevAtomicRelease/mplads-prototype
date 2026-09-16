@@ -18,7 +18,7 @@ METRICS = {
     "high": ("high", "high-priority works", "count", False),
     "open_over_year": ("open_over_year", "works open beyond one year", "count", False),
     "no_payment_3m": ("no_payment_3m", "works with no payment after three months", "count", False),
-    "completed": ("completed", "completed works", "count", True),
+    "completed": ("completed", "reported-complete works (export membership)", "count", True),
     "sanctioned": ("sanctioned", "sanctioned works", "count", None),
     "cost_outliers": ("cost_outliers", "high-cost-peer works", "count", False),
     "duplicates": ("duplicates", "similar-work flags", "count", False),
@@ -26,7 +26,7 @@ METRICS = {
     "settled_paise": ("settled_paise", "settled (reported) payments", "money", None),
     "pending_paise": ("pending_paise", "in-progress payments", "money", None),
     "settled_pct": ("settled_pct", "settled-to-sanction ratio", "pct", True),
-    "completion_rate": ("completion_rate", "completion rate", "pct", True),
+    "completion_rate": ("completion_rate", "reported completion rate (export membership)", "pct", True),
     "mean_priority": ("mean_priority", "mean review priority", "num", False),
 }
 METRIC_WORDS = [
@@ -34,12 +34,12 @@ METRIC_WORDS = [
     ("open_over_year", ["open beyond", "beyond one year", "over one year", "over a year", "delayed", "delays", "delay", "stalled", "overdue", "long open", "not completed in time"]),
     ("no_payment_3m", ["no payment", "unpaid", "without payment", "no observed payment"]),
     ("completion_rate", ["completion rate", "completed ratio", "percent completed", "completion percentage"]),
-    ("completed", ["completed works", "completions", "finished works"]),
+    ("completed", ["completed works", "works completed", "completed", "completions", "finished works"]),
     ("settled_pct", ["utilisation", "utilization", "settled ratio", "spend ratio", "paid ratio", "settled to sanction", "settled vs sanction", "settlement ratio"]),
     ("settled_paise", ["settled", "paid", "spent", "expenditure", "disbursed", "payment", "payments", "spending"]),
     ("pending_paise", ["pending payment", "in progress", "in-progress"]),
     ("sanction_paise", ["sanction amount", "sanctioned amount", "sanctioned value", "funds sanctioned", "sanctioned funds", "sanction value"]),
-    ("cost_outliers", ["cost outlier", "cost outliers", "overpriced", "high cost", "expensive", "costliest"]),
+    ("cost_outliers", ["cost overrun", "cost overruns", "overrun", "overruns", "cost outlier", "cost outliers", "overpriced", "high cost", "expensive", "costliest"]),
     ("duplicates", ["duplicate", "duplicates", "similar work", "similar works", "repeated work"]),
     ("mean_priority", ["average priority", "mean priority", "average risk", "risk score"]),
     ("sanctioned", ["sanctioned works", "number sanctioned"]),
@@ -134,7 +134,9 @@ def parse(question, states):
     # Lowercase and reduce punctuation (hyphens, ?, etc.) to spaces so multi-word
     # phrases like "settled-to-sanction ratio" match the vocabulary.
     text = " " + re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", question.lower())).strip() + " "
-    metric = _find(text, METRIC_WORDS) or "works"
+    loaded = any(w in text for w in (" corrupt", " corruption", " fraud", " fraudulent", " guilty", " culprit", " criminal", " scam", " embezzl", " bribe", " cheat"))
+    metric_hit = _find(text, METRIC_WORDS)
+    metric = metric_hit or "works"
     dim = _find(text, DIM_WORDS)
     # Filters
     filters, clauses, params, described = {}, [], [], []
@@ -168,7 +170,7 @@ def parse(question, states):
     aggregate = (not dim) and (bool(clauses)) and (("how many" in text) or ("total" in text) or ("what is" in text) or not ranking)
     if not dim and not aggregate:
         dim = "state"
-    return {"metric": metric, "dimension": dim, "aggregate": aggregate, "clauses": clauses, "params": params,
+    return {"metric": metric, "metric_found": metric_hit is not None, "loaded": loaded, "dimension": dim, "aggregate": aggregate, "clauses": clauses, "params": params,
             "described": described, "direction": direction, "limit": _limit(text), "filters": filters}
 
 
@@ -201,9 +203,18 @@ def _fmt(kind, value):
     return f"{int(value):,}"
 
 
+def _clarify(question, message):
+    return {"question": question, "interpretation": "Not interpreted", "summary": message, "note": message,
+            "columns": [], "rows": [], "sql": "", "params": [], "row_count": 0,
+            "caveat": "Ask for a review signal — high-priority works, delays, cost overruns, duplicates, settled-to-sanction ratio — by state, district authority, MP, activity or cohort."}
+
+
 def answer(db, question):
     states = [r[0] for r in db.execute("SELECT DISTINCT state FROM Work_Features")]
     intent = parse(question, states)
+    # Design law: never rank people or works by fraud/corruption; no score is a finding of fraud.
+    if intent["loaded"]:
+        return _clarify(question, "This tool does not rank people or works by fraud or corruption — no score here is a finding of fraud. It surfaces review signals for human verification. Try a signal such as high-priority works, cost overruns, delays, duplicates, or settled-to-sanction ratio.")
     metric, dim = intent["metric"], intent["dimension"]
     where = (" WHERE " + " AND ".join(intent["clauses"])) if intent["clauses"] else ""
     order_alias = METRICS[metric][0]

@@ -204,8 +204,11 @@ def lifecycle_features(work, as_of):
     field(work,"payment_sanction_delta_paise",(work.successful_payment_paise-work.sanction_amount_paise).where(work.has_successful_payment_evidence),"Observed successful expenditure minus sanction; missing payment evidence remains null","04/06")
     field(work,"paid_to_sanction_ratio",ratio(work.successful_payment_paise,work.sanction_amount_paise).where(work.has_successful_payment_evidence),"Observed settled amount / sanction, null when no settlement evidence","04/06")
     field(work,"completion_payment_gap_paise",(work.completion_actual_paise-work.successful_payment_paise).where(work.in_completed & work.has_successful_payment_evidence),"Completion actual minus observed successful payments; not assumed recoverable/unpaid money","05/06")
-    field(work,"paid_over_sanction_flag",work.payment_sanction_delta_paise.gt(1).fillna(False),"Reported successful payments exceed sanction by more than one paise; investigate revised orders","04/06")
-    field(work,"completion_over_sanction_flag",work.completion_sanction_delta_paise.gt(1).fillna(False),"Reported completion actual exceeds sanction by more than one paise; investigate revised orders","04/05")
+    # Financial materiality: ignore trivial or rounding-level excesses. A payment/completion
+    # overage flags only when it clears both an absolute floor (INR 10,000) and 2% of sanction.
+    material = np.maximum(1_000_000.0, work.sanction_amount_paise.astype("float64") * 0.02)
+    field(work,"paid_over_sanction_flag",(work.payment_sanction_delta_paise.astype("float64") > material).fillna(False),"Reported successful payments exceed sanction by a material margin (over the greater of INR 10,000 and 2% of sanction); investigate revised orders","04/06")
+    field(work,"completion_over_sanction_flag",(work.completion_sanction_delta_paise.astype("float64") > material).fillna(False),"Reported completion actual exceeds sanction by a material margin (over the greater of INR 10,000 and 2% of sanction); investigate approved scope/revised sanction","04/05")
     field(work,"repeat_payment_report_flag",work.repeated_report_excess_rows.gt(0),"At least one repeated report fingerprint; payment duplication unproven","06")
     field(work,"march_settled_share",ratio(work.march_successful_paise,work.successful_payment_paise).where(work.has_successful_payment_evidence),"Share of settled amount disbursed in March; null without settlement evidence","06")
     field(work,"march_rush_flag",(work.has_successful_payment_evidence & work.march_successful_paise.gt(0) & work.march_settled_share.ge(0.8)).fillna(False),"At least 80% of settled amount disbursed in March (financial year-end); verify progress at time of payment, not itself misuse","06")
@@ -248,7 +251,7 @@ def cost_features(work):
         field(work,col,data[col],"Prior-financial-year benchmark: state/activity first, activity fallback, minimum 20 peers; log-MAD scale floor 0.1", "04", "Uses earlier fiscal years only; exports may be retrospectively updated")
     field(work,"cost_peer_log_z",(np.log1p(amounts)-work.peer_log_median)/work.peer_log_scale,"Log-amount deviation divided by max(1.4826 log-MAD,0.1); null without historical peers", "04", "Prior-financial-year benchmark")
     field(work,"cost_peer_ratio",ratio(amounts,work.peer_median_inr),"Sanction divided by prior-year peer median; not a unit-cost comparison","04","Prior-financial-year benchmark")
-    field(work,"high_cost_peer_flag",(work.cost_peer_log_z.gt(3.5)&work.cost_peer_ratio.ge(2)).fillna(False),"Large prior-year peer amount deviation; quantities/specifications are unavailable","04","Prior-financial-year benchmark")
+    field(work,"high_cost_peer_flag",(work.cost_peer_log_z.gt(3.5)&work.cost_peer_ratio.ge(2)&work.sanction_amount_paise.ge(10000000)).fillna(False),"Large prior-year peer amount deviation on a work of at least INR 1 lakh (materiality floor); quantities/specifications are unavailable","04","Prior-financial-year benchmark")
     return work
 
 

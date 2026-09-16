@@ -143,7 +143,8 @@ function Ask({inspect}:{inspect:(key:string,value:string)=>void}) {
   const [draft,setDraft]=useState('');const [query,setQuery]=useState('');
   const data=useData<Row>('/api/ask'+(query?`?q=${encodeURIComponent(query)}`:''));
   const examples:string[]=data.data?.examples||[];
-  const answered=!!data.data?.columns;
+  const answered=!!(data.data?.columns?.length);
+  const clarify=!!query&&!!data.data&&!answered?data.data.summary:'';
   const cell=(kind:string,v:unknown)=>kind==='money'?crore(v):kind==='pct'?percent(v):kind==='num'?(v==null?'—':Number(v).toFixed(1)):kind==='count'?count(v):(v==null?'—':String(v));
   return <>
     <form className="s6-ask" onSubmit={e=>{e.preventDefault();setQuery(draft.trim())}}><Search size={18}/><input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="e.g. Which districts in Bihar have the most delays?"/><button type="submit" disabled={!draft.trim()}>Ask</button></form>
@@ -153,6 +154,7 @@ function Ask({inspect}:{inspect:(key:string,value:string)=>void}) {
       <div style={{overflowX:'auto'}}><Table><TableHeader><TableRow>{data.data!.columns.map((c:Row)=><TableHead key={c.key}>{c.label}</TableHead>)}</TableRow></TableHeader><TableBody>{data.data!.rows.map((r:Row,i:number)=><TableRow key={i}>{data.data!.columns.map((c:Row)=><TableCell key={c.key} className={c.kind==='money'||c.kind==='count'?'amount-cell':''}>{c.key==='_dim'?<button className="record-title" onClick={()=>{if(data.data!.interpretation.toLowerCase().startsWith('state'))inspect('state',String(r._dim))}}>{cell(c.kind,r[c.key])}</button>:cell(c.kind,r[c.key])}</TableCell>)}</TableRow>)}</TableBody></Table></div>
       <p className="section-note">{data.data!.caveat}</p>
       <details style={{padding:'0 24px 22px'}}><summary>Generated SQL ({data.data!.row_count} rows)</summary><pre className="s6-sql">{data.data!.sql}{data.data!.params.length?`\n-- parameters: ${data.data!.params.join(', ')}`:''}</pre></details></div>}
+    {!!clarify&&<div className="panel"><div className="panel-head"><div><h2>Couldn't answer that directly</h2><p>{clarify}</p></div></div><p className="section-note">{data.data!.caveat}</p></div>}
   </>;
 }
 
@@ -177,7 +179,7 @@ function MPView({open}:{open:(id:string)=>void}) {
       <Metric label="Calamity consent" value={crore(mp.consented_paise)}/>
     </div>
     <div className="overview-grid">
-      <div className="panel"><div className="panel-head"><div><h2>Work progress</h2></div></div><dl className="s6-facts" style={{padding:'4px 24px 20px'}}>{[['Recommended records',count(mp.recommended_record_count)],['Sanctioned',count(mp.sanctioned_count)],['Completed',count(mp.completed_count)],['Completion / sanction',percent(mp.completion_to_sanction_ratio)],['Open beyond one year',count(mp.open_over_one_year_count)],['No payment after 3 months',count(mp.no_payment_three_months_count)]].map(([l,v])=><div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></div>
+      <div className="panel"><div className="panel-head"><div><h2>Work progress</h2></div></div><dl className="s6-facts" style={{padding:'4px 24px 20px'}}>{[['Recommended records',count(mp.recommended_record_count)],['Sanctioned',count(mp.sanctioned_count)],['Reported complete (export)',count(mp.completed_count)],['Reported completion / sanction',percent(mp.completion_to_sanction_ratio)],['Open beyond one year',count(mp.open_over_one_year_count)],['No payment after 3 months',count(mp.no_payment_three_months_count)]].map(([l,v])=><div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></div>
       <div className="panel"><div className="panel-head"><div><h2>Compliance checks</h2></div></div><dl className="s6-facts" style={{padding:'4px 24px 8px'}}>{[['SC-area allocation (15% mandate)'],['ST-area allocation (7.5% mandate)'],['Trust/society ₹75L ceiling'],['Jurisdiction of recommendation']].map(([l])=><div key={l}><dt>{l}</dt><dd>Unavailable</dd></div>)}</dl><p className="section-note">These mandates need beneficiary-area tags, a trust register and geocoding not in the supplied exports. They are shown as <strong>unavailable, not passed</strong>.</p></div>
     </div>
     <div className="panel"><div className="panel-head"><div><h2>Flagged and recent works</h2></div></div><Status error={works.error} loading={!works.data}/>{works.data&&<><div style={{overflowX:'auto'}}><Table><TableHeader><TableRow>{['Work / purpose','Lifecycle','Sanctioned','Settled','Review priority'].map(h=><TableHead key={h}>{h}</TableHead>)}</TableRow></TableHeader><TableBody>{works.data.items.map((w:Row)=><TableRow key={w.work_id}><TableCell className="work-cell"><button className="record-title" onClick={()=>open(w.work_id)}>{w.description||'No description supplied'}</button><small className="record-meta">#{w.work_id}</small></TableCell><TableCell>{w.lifecycle}<small className="record-meta">{w.sanction_date||'No observed sanction'}</small></TableCell><TableCell className="amount-cell">{rupees(w.sanction_amount_paise)}</TableCell><TableCell className="amount-cell">{rupees(w.successful_payment_paise)}</TableCell><TableCell><Band b={w.priority_band}/> <span className="quiet">{w.priority_score}</span></TableCell></TableRow>)}</TableBody></Table></div><p className="section-note">Highest priority first ({works.data.items.length} of {count(works.data.summary.total)}). Open a work for its evidence trail.</p></>}</div></>;
