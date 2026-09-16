@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Search, Download, ChevronLeft, ChevronRight, ShieldCheck, ArrowUpRight, Building2, MapPin, TrendingUp, LayoutDashboard, ListFilter, Layers3, Copy, FlaskConical, Database, MessageSquareText, Users } from 'lucide-react';
+import { Search, Download, ChevronLeft, ChevronRight, ShieldCheck, ArrowUpRight, Building2, MapPin, TrendingUp, LayoutDashboard, ListFilter, Layers3, Copy, FlaskConical, Database, MessageSquareText, Users, CircleAlert, Sun, Moon, ClipboardCopy, Inbox } from 'lucide-react';
 import { Sidebar, SidebarProvider, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -49,9 +49,12 @@ function Pick({label,value,items,onChange}:{label:string,value:string,items:[str
   return <div className="pick"><label>{label}</label><Select items={values} value={value||'__all'} onValueChange={v=>onChange(v==='__all'?'':String(v))}><SelectTrigger className="pick-trigger" aria-label={label}><SelectValue/></SelectTrigger><SelectContent>{values.map(v=><SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>)}</SelectContent></Select></div>;
 }
 function Pager({offset,total,onChange}:{offset:number,total:number,onChange:(n:number)=>void}) {
-  return <div className="pager"><span>{total ? `${count(offset+1)}–${count(Math.min(offset+50,total))} of ${count(total)}`:'No matching records'}</span><div style={{display:'flex',gap:10}}><button disabled={!offset} onClick={()=>onChange(Math.max(0,offset-50))}><ChevronLeft size={16}/>Previous</button><button disabled={offset+50>=total} onClick={()=>onChange(offset+50)}>Next<ChevronRight size={16}/></button></div></div>;
+  const page=Math.floor(offset/50)+1, pages=Math.max(1,Math.ceil(total/50));
+  return <div className="pager"><span>{total ? `${count(offset+1)}–${count(Math.min(offset+50,total))} of ${count(total)}`:'No matching records'}</span><div style={{display:'flex',gap:10,alignItems:'center'}}><button disabled={!offset} onClick={()=>onChange(Math.max(0,offset-50))}><ChevronLeft size={16}/>Previous</button><span className="page-number">{total?`Page ${count(page)} / ${count(pages)}`:''}</span><button disabled={offset+50>=total} onClick={()=>onChange(offset+50)}>Next<ChevronRight size={16}/></button></div></div>;
 }
-function Status({error,loading}:{error:string,loading:boolean}) {return error?<p role="alert" className="section-note" style={{color:'#ae494f'}}>{error}</p>:loading?<p role="status" className="section-note">Loading local records…</p>:null;}
+function Skeleton({card}:{card?:boolean}) {return <div className="sk-rows" aria-hidden="true">{[0,1,2,3].map(i=><div key={i} className={`sk ${card?'sk-card':'sk-bar'}`} style={card?undefined:{width:`${92-i*13}%`}}/>)}</div>;}
+function Status({error,loading,card}:{error:string,loading:boolean,card?:boolean}) {return error?<div role="alert" className="s6-empty"><CircleAlert size={24}/><span>{error}</span></div>:loading?<div role="status" aria-label="Loading local records"><Skeleton card={card}/></div>:null;}
+function Empty({label}:{label:string}) {return <div className="s6-empty"><Inbox size={26}/><span>{label}</span></div>;}
 function DownloadLink({file,children}:{file:string,children:React.ReactNode}) {return <a className="text-link" href={`/api/download/${file}`} download><Download size={15}/>{children}</a>;}
 function Metric({label,value,note}:{label:string,value:React.ReactNode,note?:string}) {return <div className="metric"><span className="metric-label">{label}</span><strong>{value}</strong>{note&&<span>{note}</span>}</div>;}
 
@@ -96,7 +99,7 @@ function Choropleth({states,selected,onPick}:{states:Row[],selected:string,onPic
   })();
   return <div className="panel"><div className="panel-head"><div><h2>State risk map</h2><p>Shaded by share of works in the High band. Hover for detail; click to drill. Telangana and Ladakh have no separate boundary in the base map.</p></div><MapPin size={18}/></div><div style={{padding:'0 20px 18px'}}>
     <Status error={geo.error} loading={!geo.data}/>
-    {view&&<div className="s6-mapwrap"><svg viewBox={`0 0 ${view.W} ${view.H}`} className="s6-map" role="img" aria-label="India state risk choropleth">{view.paths.map((p:Row)=>{const r=p.row;const f=r?r.high/r.works:null;const on=r&&selected===r.state;return <path key={p.geo} d={p.d} fill={f==null?'#e6eaee':heat(f)} stroke={on?'#0f2233':'#9fb0be'} strokeWidth={on?1.4:0.4} style={{cursor:r?'pointer':'default'}} onMouseEnter={()=>setHover(r||{state:p.geo,_nomatch:true})} onMouseLeave={()=>setHover(null)} onClick={()=>r&&onPick(selected===r.state?'':r.state)}/>;})}</svg>
+    {view&&<div className="s6-mapwrap"><svg viewBox={`0 0 ${view.W} ${view.H}`} className="s6-map" role="img" aria-label="India state risk choropleth">{view.paths.map((p:Row)=>{const r=p.row;const f=r?r.high/r.works:null;const on=r&&selected===r.state;const lab=r?`${r.state}: ${count(r.works)} works, ${(r.high/r.works*100).toFixed(1)}% high band`:`${p.geo}: no matching works`;return <path key={p.geo} d={p.d} fill={f==null?'#e6eaee':heat(f)} stroke={on?'#0f2233':'#9fb0be'} strokeWidth={on?1.4:0.4} style={{cursor:r?'pointer':'default'}} tabIndex={r?0:-1} role={r?'button':undefined} aria-label={lab} onFocus={()=>setHover(r||{state:p.geo,_nomatch:true})} onBlur={()=>setHover(null)} onKeyDown={e=>{if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onPick(selected===r.state?'':r.state);}}} onMouseEnter={()=>setHover(r||{state:p.geo,_nomatch:true})} onMouseLeave={()=>setHover(null)} onClick={()=>r&&onPick(selected===r.state?'':r.state)}/>;})}</svg>
       <div className="s6-maplegend"><span>Lower</span><i style={{background:heat(0)}}/><i style={{background:heat(0.03)}}/><i style={{background:heat(0.05)}}/><i style={{background:heat(0.07)}}/><i style={{background:heat(0.09)}}/><span>Higher High-band share</span></div>
       {hover&&<div className="s6-maptip">{hover._nomatch?<><strong>{hover.state}</strong><span>No matching works in this extract</span></>:<><strong>{hover.state}</strong><span>{count(hover.works)} works · {count(hover.high)} High ({(hover.high/hover.works*100).toFixed(1)}%)</span><span>{crore(hover.sanction_paise)} sanctioned</span></>}</div>}</div>}
   </div></div>;
@@ -111,7 +114,7 @@ function Overview({inspect}:{inspect:(key:string,value:string)=>void}) {
   const topStates=(d?.states||[]).slice(0,10).map((s:Row)=>({name:s.state.length>12?s.state.slice(0,11)+'…':s.state,High:s.high}));
   const trend=(months.data?.items||[]).map((m:Row)=>({month:m.payment_month,Settled:Math.round(m.successful_payment_paise/1e7)/100}));
   const idas=state?d?.idas:d?.top_idas;
-  return <><Status error={data.error} loading={!n}/>{n&&<>
+  return <><Status error={data.error} loading={!n} card/>{n&&<>
     <div className="metric-grid">
       <Metric label="Connected works" value={count(n.works)}/>
       <Metric label="High-priority reviews" value={count(n.high)}/>
@@ -153,7 +156,7 @@ function Ask({inspect}:{inspect:(key:string,value:string)=>void}) {
     {answered&&<div className="panel"><div className="panel-head"><div><h2>{data.data!.summary}</h2><p>Interpreted as: {data.data!.interpretation}</p></div></div>
       <div style={{overflowX:'auto'}}><Table><TableHeader><TableRow>{data.data!.columns.map((c:Row)=><TableHead key={c.key}>{c.label}</TableHead>)}</TableRow></TableHeader><TableBody>{data.data!.rows.map((r:Row,i:number)=><TableRow key={i}>{data.data!.columns.map((c:Row)=><TableCell key={c.key} className={c.kind==='money'||c.kind==='count'?'amount-cell':''}>{c.key==='_dim'?<button className="record-title" onClick={()=>{if(data.data!.interpretation.toLowerCase().startsWith('state'))inspect('state',String(r._dim))}}>{cell(c.kind,r[c.key])}</button>:cell(c.kind,r[c.key])}</TableCell>)}</TableRow>)}</TableBody></Table></div>
       <p className="section-note">{data.data!.caveat}</p>
-      <details style={{padding:'0 24px 22px'}}><summary>Generated SQL ({data.data!.row_count} rows)</summary><pre className="s6-sql">{data.data!.sql}{data.data!.params.length?`\n-- parameters: ${data.data!.params.join(', ')}`:''}</pre></details></div>}
+      <details style={{padding:'0 24px 22px'}}><summary>Generated SQL ({data.data!.row_count} rows)<button className="copy-btn" onClick={e=>{e.preventDefault();try{navigator.clipboard?.writeText(data.data!.sql);}catch{}}}><ClipboardCopy size={13}/>Copy</button></summary><pre className="s6-sql">{data.data!.sql}{data.data!.params.length?`\n-- parameters: ${data.data!.params.join(', ')}`:''}</pre></details></div>}
     {!!clarify&&<div className="panel"><div className="panel-head"><div><h2>Couldn't answer that directly</h2><p>{clarify}</p></div></div><p className="section-note">{data.data!.caveat}</p></div>}
   </>;
 }
@@ -231,6 +234,8 @@ function Sources({meta}:{meta:Row}) {
 
 function App() {
   const meta=useData<Row>('/api/meta');const [view,setView]=useState('overview');const [selected,setSelected]=useState<string|null>(null);const [entity,setEntity]=useState<Row>({});
+  const [theme,setTheme]=useState<'light'|'dark'>(()=>{try{return (localStorage.getItem('mplads-theme') as 'light'|'dark')||'light'}catch{return 'light'}});
+  useEffect(()=>{try{document.documentElement.dataset.theme=theme;localStorage.setItem('mplads-theme',theme)}catch{}},[theme]);
   function inspect(key:string,value:string){setEntity({[key]:value});setSelected(null);setView('queue')}
   const cohorts=(meta.data?.cohorts||[]).map((c:string)=>COHORT_LABEL[c]||c).join(' · ');
   const [desc,eyebrow]=HEAD[view];
@@ -242,7 +247,7 @@ function App() {
       <SidebarFooter><div className="sidebar-source"><span className="connection-dot"/>Local source connected<small>{cohorts||'MPLADS'}</small>{meta.data&&<small>{count(meta.data.totals.works)} works · as of {meta.data.as_of}</small>}</div><div className="sidebar-foot">PS 26102 <span>Local</span></div></SidebarFooter>
     </Sidebar>
     <SidebarInset className="app-main">
-      <header className="topbar"><div><SidebarTrigger/><span className="crumb">MPLADS / <strong>{label}</strong></span></div><span className="environment-pill"><span/>Local processing · review signals, not findings of fraud</span></header>
+      <header className="topbar"><div><SidebarTrigger/><span className="crumb">MPLADS / <strong>{label}</strong></span></div><div style={{display:'flex',gap:12,alignItems:'center'}}><span className="environment-pill"><span/>Local processing · review signals, not findings of fraud</span><button className="theme-toggle" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} aria-label={`Switch to ${theme==='dark'?'light':'dark'} mode`}>{theme==='dark'?<Sun size={15}/>:<Moon size={15}/>}<span>{theme==='dark'?'Light':'Dark'}</span></button></div></header>
       <main className="main-content">
         <div className="page-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{label}</h1><p className="page-description">{desc}</p></div>{view==='overview'&&meta.data&&<DownloadLink file="audit.json">National audit</DownloadLink>}</div>
         <Status error={meta.error} loading={!meta.data}/>{meta.data&&<>
