@@ -30,8 +30,10 @@ def main(local: Path, out: Path, input_dir: Path):
     build(input_dir, out, as_of=as_of, cohorts=cohorts)
     a = json.loads((local / "artifact_hashes.json").read_text(encoding="utf-8"))
     b = json.loads((out / "artifact_hashes.json").read_text(encoding="utf-8"))
-    keys = sorted(set(a) | set(b))
-    mismatch = [k for k in keys if a.get(k) != b.get(k)]
+    # Compare the build artifacts (keys the fresh rebuild produced); ancillary files
+    # such as validate.py's ab_*.csv are not build outputs and are not compared.
+    keys = sorted(b)
+    mismatch = [k for k in keys if a.get(k) != b[k]]
     for k in keys:
         print(("  OK   " if a.get(k) == b.get(k) else "  DIFF ") + k)
     if mismatch:
