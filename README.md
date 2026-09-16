@@ -125,11 +125,11 @@ Numbers are descriptive of the supplied exports, not verified national totals.
 
 ## Validation (`six_source/validate.py`, "A/B validation" tab)
 
-`validate.py` runs an offline A/B screening comparison on the six_source build and writes `local/ab_metrics.json` (served at `/api/validation`) plus `AB_Report.md` and CSVs. Two evidence layers, no fraud-accuracy claim:
-1. **Real retrospective queue comparison** — baseline **A** (seven operational/payment screens) vs enhanced **B** (A + cost-outlier + near-duplicate) on the actual build; report queue **overlap** (Jaccard) at equal review budgets.
-2. **Controlled mechanism benchmark** — seeded synthetic cases whose labels record which screen should fire. The two B-only families (inflated cost, near-duplicate) are scored zero by A, so B's advantage at a fixed budget comes from the enhancement. Reported as recovery per budget with a paired bootstrap 95% interval and per-family selection counts.
+`validate.py` runs an offline A/B screening comparison and writes `local/ab_metrics.json` (served at `/api/validation`) plus `AB_Report.md` and CSVs. Two evidence layers, no fraud-accuracy claim:
+1. **Controlled mechanism benchmark on the real pipeline** — synthetic *source-shaped rows* (a prior-year peer background, labelled positive mechanisms, **legitimate-exception negatives** and difficult negatives) are run through the **actual build feature functions and rule engine**, then the **actual queue** is evaluated at equal review budgets: recovery, useful findings per review, and false-alert burden (genuinely flagged negatives, not zero-score fillers), with a paired bootstrap 95% interval. Baseline **A** = the operational/payment screens; enhanced **B** adds cost-outlier, near-duplicate and year-end screens.
+2. **Real retrospective queue comparison** — A vs B ranking of the actual built works; report queue **overlap** (Jaccard) at equal budgets. No accuracy claim.
 
-Representative result: at a 10% review budget B recovers ~100% vs A's ~78% (+~22 pp), because A ranks cost/duplicate cases as zero; at 5% both are equal (neither budget fits every positive). The earlier `evaluation_18/` protocol (`PROTOCOL.md`) informed this design but is coupled to the archived namespaced release.
+Representative result (seed 26102): **0 of 1,284** legitimate-exception/hard negatives are flagged (materiality + guards working), 100/120 positives flag (the near-duplicate misses are bounded-detector limits), and at a 10% budget **B recovers ~83% vs A ~60% (+23 pp, 95% CI ~16–31 pp) with zero false alerts** — B recovers the cost/duplicate positives A scores zero. Evaluation families, seed, cutoff and peer anchors are frozen before scoring; production thresholds are used unchanged (no tuning on the test set). The earlier `evaluation_18/PROTOCOL.md` informed this design.
 
 ---
 
