@@ -1,0 +1,33 @@
+{
+  "file": "D:\\DEV\\projects\\PPS_1\\outputs\\ps26102-all-cohorts-20260910\\MPLADS_Data_Review.xlsx",
+  "sheets": [
+    "Overview",
+    "MP terms",
+    "Review sample",
+    "Source audit",
+    "Feature dictionary",
+    "Limits and sources"
+  ],
+  "checks": [
+    {
+      "check": "Formula total updates after input change",
+      "passed": true
+    },
+    {
+      "check": "Restored total matches complete dataset",
+      "passed": true
+    },
+    {
+      "check": "Sample does not replace complete work count",
+      "passed": true
+    }
+  ],
+  "rendered_ranges": {
+    "Overview": "A1:C29",
+    "MP terms": "A1:F12",
+    "Review sample": "A1:F10",
+    "Source audit": "A1:G12",
+    "Feature dictionary": "A1:D10",
+    "Limits and sources": "A1:B10"
+  }
+}

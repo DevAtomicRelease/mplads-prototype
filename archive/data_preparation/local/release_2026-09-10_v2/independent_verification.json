@@ -1,0 +1,761 @@
+{
+  "checks_passed": 185,
+  "raw_source_rows": 459965,
+  "work_rows": 160701,
+  "payment_rows": 113691,
+  "totals_paise": {
+    "recommendation": 10272233405817,
+    "sanction": 7998309744846,
+    "completion": 3596293304309,
+    "success": 4592559970304,
+    "pending": 146584434100,
+    "allocation": 14200145854528,
+    "consent": 14756740000
+  },
+  "rebuild": {
+    "directory": "D:\\DEV\\projects\\PPS_1\\data_preparation\\reproduced",
+    "matching_csv_files": 19
+  },
+  "checks": [
+    {
+      "check": "Raw hash Lok Sabha/01_allocated_limit.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Lok Sabha/01_allocated_limit.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Lok Sabha/02_calamity_consent.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Lok Sabha/02_calamity_consent.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Lok Sabha/03_works_recommended.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Lok Sabha/03_works_recommended.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Lok Sabha/04_works_sanctioned.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Lok Sabha/04_works_sanctioned.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Lok Sabha/05_works_completed.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Lok Sabha/05_works_completed.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Lok Sabha/06_expenditure.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Lok Sabha/06_expenditure.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_retired/01_allocated_limit.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_retired/01_allocated_limit.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_retired/02_calamity_consent.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_retired/02_calamity_consent.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_retired/03_works_recommended.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_retired/03_works_recommended.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_retired/04_works_sanctioned.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_retired/04_works_sanctioned.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_retired/05_works_completed.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_retired/05_works_completed.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_retired/06_expenditure.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_retired/06_expenditure.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_sitting/01_allocated_limit.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_sitting/01_allocated_limit.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_sitting/02_calamity_consent.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_sitting/02_calamity_consent.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_sitting/03_works_recommended.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_sitting/03_works_recommended.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_sitting/04_works_sanctioned.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_sitting/04_works_sanctioned.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_sitting/05_works_completed.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_sitting/05_works_completed.csv",
+      "passed": true
+    },
+    {
+      "check": "Raw hash Rajya_Sabha_sitting/06_expenditure.csv",
+      "passed": true
+    },
+    {
+      "check": "Original rows Rajya_Sabha_sitting/06_expenditure.csv",
+      "passed": true
+    },
+    {
+      "check": "SQLite integrity",
+      "passed": true
+    },
+    {
+      "check": "Safe work union",
+      "passed": true
+    },
+    {
+      "check": "Exact work key membership",
+      "passed": true
+    },
+    {
+      "check": "Accepted payment row count",
+      "passed": true
+    },
+    {
+      "check": "Quarantine row count",
+      "passed": true
+    },
+    {
+      "check": "Work_Features recommended_amount_paise",
+      "passed": true
+    },
+    {
+      "check": "Work_Features sanction_amount_paise",
+      "passed": true
+    },
+    {
+      "check": "Work_Features completion_actual_paise",
+      "passed": true
+    },
+    {
+      "check": "MP_Term_Features allocated_paise",
+      "passed": true
+    },
+    {
+      "check": "Calamity_Consents consent_amount_paise",
+      "passed": true
+    },
+    {
+      "check": "Work_Features successful_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Work_Features pending_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "MP_Term_Features successful_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "MP_Term_Features pending_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "IDA_Features successful_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "IDA_Features pending_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Vendor_Features successful_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Vendor_Features pending_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Vendor_Connections successful_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Vendor_Connections pending_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Monthly_Payments successful_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Monthly_Payments pending_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Cohort_Summary successful_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "Cohort_Summary pending_payment_paise",
+      "passed": true
+    },
+    {
+      "check": "No duplicate master keys",
+      "passed": true
+    },
+    {
+      "check": "No missing payment work links",
+      "passed": true
+    },
+    {
+      "check": "No mixed MP term in payment link",
+      "passed": true
+    },
+    {
+      "check": "FLAG=2 never treated as sanctioned",
+      "passed": true
+    },
+    {
+      "check": "No ratio imputation for unknown successful payments",
+      "passed": true
+    },
+    {
+      "check": "No ratio with zero sanction denominator",
+      "passed": true
+    },
+    {
+      "check": "Pending rows never counted as successes",
+      "passed": true
+    },
+    {
+      "check": "INR 1 reconciliation tolerance",
+      "passed": true
+    },
+    {
+      "check": "Completion amount arithmetic",
+      "passed": true
+    },
+    {
+      "check": "Payment amount arithmetic",
+      "passed": true
+    },
+    {
+      "check": "Payment/sanction ratio arithmetic",
+      "passed": true
+    },
+    {
+      "check": "Sanction delay arithmetic",
+      "passed": true
+    },
+    {
+      "check": "Completion duration arithmetic",
+      "passed": true
+    },
+    {
+      "check": "Unweighted screen counts match reasons",
+      "passed": true
+    },
+    {
+      "check": "Concentration bounds",
+      "passed": true
+    },
+    {
+      "check": "Candidate pair endpoints differ",
+      "passed": true
+    },
+    {
+      "check": "Candidate foreign keys",
+      "passed": true
+    },
+    {
+      "check": "All pipeline checks exported",
+      "passed": true
+    },
+    {
+      "check": "No failing exported checks",
+      "passed": true
+    },
+    {
+      "check": "All 18 raw tables",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite record conservation",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_LS_allocations",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_LS_consents",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_LS_recommended",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_LS_sanctioned",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_LS_completed",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_LS_payments",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSR_allocations",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSR_consents",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSR_recommended",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSR_sanctioned",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSR_completed",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSR_payments",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSS_allocations",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSS_consents",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSS_recommended",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSS_sanctioned",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSS_completed",
+      "passed": true
+    },
+    {
+      "check": "Raw SQLite original strings Raw_RSS_payments",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for MP_Term_Features",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for IDA_Features",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Cohort_Summary",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Vendor_Features",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Vendor_Connections",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for IDA_Year_Concentration",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Monthly_Payments",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Calamity_Consents",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Work_Features",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Payment_Features",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Work_Signals",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Duplicate_Candidates",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Source_Audit",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Source_Column_Profile",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Field_Conflicts",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Quarantine",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Normalization_Log",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Validation_Checks",
+      "passed": true
+    },
+    {
+      "check": "Dictionary complete for Feature_Dictionary",
+      "passed": true
+    },
+    {
+      "check": "Output record count MP_Term_Features",
+      "passed": true
+    },
+    {
+      "check": "Output record count IDA_Features",
+      "passed": true
+    },
+    {
+      "check": "Output record count Cohort_Summary",
+      "passed": true
+    },
+    {
+      "check": "Output record count Vendor_Features",
+      "passed": true
+    },
+    {
+      "check": "Output record count Vendor_Connections",
+      "passed": true
+    },
+    {
+      "check": "Output record count IDA_Year_Concentration",
+      "passed": true
+    },
+    {
+      "check": "Output record count Monthly_Payments",
+      "passed": true
+    },
+    {
+      "check": "Output record count Calamity_Consents",
+      "passed": true
+    },
+    {
+      "check": "Output record count Work_Features",
+      "passed": true
+    },
+    {
+      "check": "Output record count Payment_Features",
+      "passed": true
+    },
+    {
+      "check": "Output record count Work_Signals",
+      "passed": true
+    },
+    {
+      "check": "Output record count Duplicate_Candidates",
+      "passed": true
+    },
+    {
+      "check": "Output record count Source_Audit",
+      "passed": true
+    },
+    {
+      "check": "Output record count Source_Column_Profile",
+      "passed": true
+    },
+    {
+      "check": "Output record count Field_Conflicts",
+      "passed": true
+    },
+    {
+      "check": "Output record count Quarantine",
+      "passed": true
+    },
+    {
+      "check": "Output record count Normalization_Log",
+      "passed": true
+    },
+    {
+      "check": "Output record count Validation_Checks",
+      "passed": true
+    },
+    {
+      "check": "Output record count Feature_Dictionary",
+      "passed": true
+    },
+    {
+      "check": "CSV hash MP_Term_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash IDA_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Cohort_Summary.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Vendor_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Vendor_Connections.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash IDA_Year_Concentration.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Monthly_Payments.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Calamity_Consents.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Work_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Payment_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Work_Signals.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Duplicate_Candidates.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Source_Audit.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Source_Column_Profile.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Field_Conflicts.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Quarantine.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Normalization_Log.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Validation_Checks.csv",
+      "passed": true
+    },
+    {
+      "check": "CSV hash Feature_Dictionary.csv",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash data_preparation\\contracts.py",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash data_preparation\\documentation.py",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash data_preparation\\prepare.py",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash data_preparation\\profile_sources.py",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash data_preparation\\test_preparation.py",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash data_preparation\\verify.py",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash six_source\\common.py",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash six_source\\build.py",
+      "passed": true
+    },
+    {
+      "check": "Reproduction code hash pipeline_research\\build_features.py",
+      "passed": true
+    },
+    {
+      "check": "Rebuild file set",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV MP_Term_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV IDA_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Cohort_Summary.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Vendor_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Vendor_Connections.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV IDA_Year_Concentration.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Monthly_Payments.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Calamity_Consents.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Work_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Payment_Features.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Work_Signals.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Duplicate_Candidates.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Source_Audit.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Source_Column_Profile.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Field_Conflicts.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Quarantine.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Normalization_Log.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Validation_Checks.csv",
+      "passed": true
+    },
+    {
+      "check": "Rebuilt CSV Feature_Dictionary.csv",
+      "passed": true
+    }
+  ]
+}

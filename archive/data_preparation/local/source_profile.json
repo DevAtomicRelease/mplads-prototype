@@ -1,0 +1,1375 @@
+{
+  "sources": [
+    {
+      "cohort": "Lok Sabha",
+      "kind": "allocations",
+      "file": "Lok Sabha\\01_allocated_limit.csv",
+      "sha256": "da79d9fecefcff66670dd4b656f1d624b1feee0f2c5560800fd5b77bb14a696b",
+      "bytes": 72861,
+      "rows": 543,
+      "columns": [
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "TENURE",
+        "Sno",
+        "MP_NAME",
+        "HOUSE_NAME",
+        "CONSTITUENCY",
+        "ALLOCATED_AMT",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE"
+      ],
+      "missing": {},
+      "duplicate_rows_excluding_serial": 0,
+      "houses": {
+        "2": 543
+      },
+      "tenures": {
+        "18th Lok Sabha": 543
+      },
+      "terms": 543,
+      "dates": {
+        "TENURE_START_DATE": {
+          "min": "2024-04-06 00:00:00",
+          "max": "2024-11-28 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2024-08-26 23:59:59",
+          "max": "2029-06-04 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "ALLOCATED_AMT": {
+          "sum_valid": 8333667329801,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 1,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "consents",
+      "file": "Lok Sabha\\02_calamity_consent.csv",
+      "sha256": "c653f3d0ebde00baabbd9fa375f830dc9c6755a5462e838ecbf514a2d35da373",
+      "bytes": 2044,
+      "rows": 12,
+      "columns": [
+        "HOUSE_OF_PARLIAMENT",
+        "CALAMITY_NAME",
+        "TENURE",
+        "MP_NAME",
+        "CRT_DT",
+        "Sno",
+        "CONSENTED_AMOUNT",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "TYPE"
+      ],
+      "missing": {},
+      "duplicate_rows_excluding_serial": 0,
+      "houses": {
+        "2": 12
+      },
+      "tenures": {
+        "18th Lok Sabha": 12
+      },
+      "terms": 10,
+      "dates": {
+        "CRT_DT": {
+          "min": "2024-09-03 00:00:00",
+          "max": "2025-12-07 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2024-06-04 00:00:00",
+          "max": "2024-06-05 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2029-06-03 23:59:59",
+          "max": "2029-06-03 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "CONSENTED_AMOUNT": {
+          "sum_valid": 4056740000,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "recommended",
+      "file": "Lok Sabha\\03_works_recommended.csv",
+      "sha256": "f396f91ad15e0f63aae25e8171481e29007ad0c0632caed2cfd5b03c36e1c4a2",
+      "bytes": 47603335,
+      "rows": 107562,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "WORK_DESCRIPTION",
+        "RECOMMENDATION_DATE",
+        "RECOMMENDED_AMOUNT",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "WORK_STAGE",
+        "LETTER_NO",
+        "SANCTION_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "FILE_STATUS",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "ATTACH_ID",
+        "SANCTION_DATE"
+      ],
+      "missing": {
+        "WORK_DESCRIPTION": 111,
+        "WORK_STAGE": 524,
+        "SANCTION_AMOUNT": 524,
+        "FILE_STATUS": 81925,
+        "ATTACH_ID": 81925,
+        "SANCTION_DATE": 28056
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 107562,
+      "duplicate_work_ids": 0,
+      "houses": {
+        "2": 107562
+      },
+      "tenures": {
+        "18th Lok Sabha": 107562
+      },
+      "terms": 538,
+      "dates": {
+        "RECOMMENDATION_DATE": {
+          "min": "2024-07-08 00:00:00",
+          "max": "2026-09-09 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2024-04-06 00:00:00",
+          "max": "2024-11-28 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2029-03-06 23:59:59",
+          "max": "2029-06-04 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "SANCTION_DATE": {
+          "min": "2024-07-09 00:00:00",
+          "max": "2026-09-09 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "RECOMMENDED_AMOUNT": {
+          "sum_valid": 5766648780611,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        },
+        "SANCTION_AMOUNT": {
+          "sum_valid": 5727569626711,
+          "missing_or_invalid": 524,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "sanctioned",
+      "file": "Lok Sabha\\04_works_sanctioned.csv",
+      "sha256": "8b31c7f7c335458719d8db447d5b53f407f72f66d56f434aaa7cff3a14c476d5",
+      "bytes": 35153264,
+      "rows": 79881,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "WORK_DESCRIPTION",
+        "RECOMMENDATION_DATE",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "WORK_STAGE",
+        "LETTER_NO",
+        "SANCTION_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "FILE_STATUS",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "ATTACH_ID",
+        "SANCTION_DATE"
+      ],
+      "missing": {
+        "WORK_DESCRIPTION": 96,
+        "FILE_STATUS": 54244,
+        "ATTACH_ID": 54244
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 79881,
+      "duplicate_work_ids": 0,
+      "houses": {
+        "2": 79881
+      },
+      "tenures": {
+        "18th Lok Sabha": 79881
+      },
+      "terms": 536,
+      "dates": {
+        "RECOMMENDATION_DATE": {
+          "min": "2024-07-08 00:00:00",
+          "max": "2026-09-08 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2024-04-06 00:00:00",
+          "max": "2024-11-28 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2029-03-06 23:59:59",
+          "max": "2029-06-04 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "SANCTION_DATE": {
+          "min": "2024-07-09 00:00:00",
+          "max": "2026-09-09 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "SANCTION_AMOUNT": {
+          "sum_valid": 4208164095823,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "completed",
+      "file": "Lok Sabha\\05_works_completed.csv",
+      "sha256": "458edd98ddc5b2c4b9b713aca5f81333661775758073d2827058db2621c96139",
+      "bytes": 12511450,
+      "rows": 34940,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "IDA_NAME",
+        "WORK_DESCRIPTION",
+        "MP_NAME",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "LETTER_NO",
+        "ACTUAL_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "ACTUAL_END_DATE",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "WORK_ID",
+        "AVERAGE_RATING",
+        "FILE_STATUS",
+        "ATTACH_ID"
+      ],
+      "missing": {
+        "FILE_STATUS": 9303,
+        "ATTACH_ID": 9303
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 34940,
+      "duplicate_work_ids": 0,
+      "dates": {
+        "ACTUAL_END_DATE": {
+          "min": "2024-08-12 00:00:00",
+          "max": "2026-09-09 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "ACTUAL_AMOUNT": {
+          "sum_valid": 1695840777340,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 80,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Lok Sabha",
+      "kind": "payments",
+      "file": "Lok Sabha\\06_expenditure.csv",
+      "sha256": "bba2f79a9c5390a7e3a3ccada22282d3b223ea8f365991bbdd5a5b7a5637086f",
+      "bytes": 21426176,
+      "rows": 57349,
+      "columns": [
+        "STATE_NAME",
+        "ACTIVITY_NAME",
+        "VENDOR_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "IA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "LETTER_NO",
+        "VENDOR_ID",
+        "EXPENDITURE_DATE",
+        "FUND_DISBURSED_AMT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_STATUS",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "WORK_ID"
+      ],
+      "missing": {
+        "MP_NAME": 1,
+        "LETTER_NO": 1,
+        "VENDOR_ID": 1,
+        "EXPENDITURE_DATE": 1,
+        "FUND_DISBURSED_AMT": 1,
+        "Sno": 1,
+        "CONSTITUENCY": 1,
+        "WORK_STATUS": 1,
+        "WORK_RECOMMENDATION_DTL_ID": 1,
+        "TENURE_START_DATE": 1,
+        "TENURE_END_DATE": 1,
+        "WORK_ID": 1
+      },
+      "duplicate_rows_excluding_serial": 753,
+      "work_ids": 37856,
+      "duplicate_work_ids": 19493,
+      "houses": {
+        "2": 57349
+      },
+      "tenures": {
+        "18th Lok Sabha": 57348,
+        "18th Lok S": 1
+      },
+      "terms": 520,
+      "dates": {
+        "EXPENDITURE_DATE": {
+          "min": "2024-11-08 00:00:00",
+          "max": "2026-09-09 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2024-04-06 00:00:00",
+          "max": "2024-11-28 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2029-03-06 23:59:59",
+          "max": "2029-06-04 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "FUND_DISBURSED_AMT": {
+          "sum_valid": 1847590060943,
+          "missing_or_invalid": 1,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      },
+      "statuses": {
+        "Payment Success": 54208,
+        "Payment In-Progress": 3140,
+        "": 1
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "allocations",
+      "file": "Rajya_Sabha_retired\\01_allocated_limit.csv",
+      "sha256": "af5ded2439679419b9bb8f646864ef778c291888b585c1bf53e9774e8d7c6c04",
+      "bytes": 38986,
+      "rows": 248,
+      "columns": [
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "TENURE",
+        "Sno",
+        "MP_NAME",
+        "HOUSE_NAME",
+        "CONSTITUENCY",
+        "ALLOCATED_AMT",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE"
+      ],
+      "missing": {},
+      "duplicate_rows_excluding_serial": 0,
+      "houses": {
+        "1": 248
+      },
+      "tenures": {
+        "Sitting MP": 237,
+        "Nominated Rajya Sabha": 11
+      },
+      "terms": 248,
+      "dates": {
+        "TENURE_START_DATE": {
+          "min": "1998-04-03 00:00:00",
+          "max": "2024-12-13 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2008-04-09 23:59:59",
+          "max": "2026-07-19 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "ALLOCATED_AMT": {
+          "sum_valid": 2381457378580,
+          "missing_or_invalid": 9,
+          "negative": 0,
+          "zero": 8,
+          "invalid": 9,
+          "invalid_examples": [
+            "102221195.92999999",
+            "116682000.00000001",
+            "118546026.67999999",
+            "120170033.00000001",
+            "143213546.42000002",
+            "172778176.82000002",
+            "180514006.91000003",
+            "185004173.89000002",
+            "23600000.000000015"
+          ]
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "consents",
+      "file": "Rajya_Sabha_retired\\02_calamity_consent.csv",
+      "sha256": "ee931fe277645349f172ce6e344d6e94bcb937fbfbaa8f3c17a3d8151ee7b55a",
+      "bytes": 283,
+      "rows": 1,
+      "columns": [
+        "HOUSE_OF_PARLIAMENT",
+        "CALAMITY_NAME",
+        "TENURE",
+        "MP_NAME",
+        "CRT_DT",
+        "Sno",
+        "CONSENTED_AMOUNT",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "TYPE"
+      ],
+      "missing": {},
+      "duplicate_rows_excluding_serial": 0,
+      "houses": {
+        "1": 1
+      },
+      "tenures": {
+        "Sitting MP": 1
+      },
+      "terms": 1,
+      "dates": {
+        "CRT_DT": {
+          "min": "2025-10-03 00:00:00",
+          "max": "2025-10-03 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2020-06-22 00:00:00",
+          "max": "2020-06-22 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2026-06-21 23:59:59",
+          "max": "2026-06-21 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "CONSENTED_AMOUNT": {
+          "sum_valid": 250000000,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "recommended",
+      "file": "Rajya_Sabha_retired\\03_works_recommended.csv",
+      "sha256": "92ce886b7d0a14c2518c6558c864a007a0f1f6919f5c07b9bdf3f825beb3721d",
+      "bytes": 12901233,
+      "rows": 26863,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "WORK_DESCRIPTION",
+        "RECOMMENDATION_DATE",
+        "RECOMMENDED_AMOUNT",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "WORK_STAGE",
+        "LETTER_NO",
+        "SANCTION_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "SANCTION_DATE",
+        "FILE_STATUS",
+        "ATTACH_ID"
+      ],
+      "missing": {
+        "WORK_DESCRIPTION": 13,
+        "WORK_STAGE": 325,
+        "SANCTION_AMOUNT": 325,
+        "SANCTION_DATE": 2642,
+        "FILE_STATUS": 16320,
+        "ATTACH_ID": 16320
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 26858,
+      "duplicate_work_ids": 5,
+      "houses": {
+        "1": 26863
+      },
+      "tenures": {
+        "Sitting MP": 25945,
+        "Nominated Rajya Sabha": 918
+      },
+      "terms": 227,
+      "dates": {
+        "RECOMMENDATION_DATE": {
+          "min": "2018-06-09 00:00:00",
+          "max": "2026-08-27 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2004-06-22 00:00:00",
+          "max": "2024-12-13 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2015-05-31 23:59:59",
+          "max": "2026-07-19 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "SANCTION_DATE": {
+          "min": "2023-06-27 00:00:00",
+          "max": "2026-09-09 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "RECOMMENDED_AMOUNT": {
+          "sum_valid": 2258521760685,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 2,
+          "invalid": 0,
+          "invalid_examples": []
+        },
+        "SANCTION_AMOUNT": {
+          "sum_valid": 2244610516485,
+          "missing_or_invalid": 325,
+          "negative": 0,
+          "zero": 2,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "sanctioned",
+      "file": "Rajya_Sabha_retired\\04_works_sanctioned.csv",
+      "sha256": "e7145deeb0b384c87921edf6b5f327047f9326976ccaed9eefa1630e47ae58e1",
+      "bytes": 11576616,
+      "rows": 24524,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "WORK_DESCRIPTION",
+        "RECOMMENDATION_DATE",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "WORK_STAGE",
+        "LETTER_NO",
+        "SANCTION_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "SANCTION_DATE",
+        "FILE_STATUS",
+        "ATTACH_ID"
+      ],
+      "missing": {
+        "WORK_DESCRIPTION": 12,
+        "FILE_STATUS": 13981,
+        "ATTACH_ID": 13981
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 24524,
+      "duplicate_work_ids": 0,
+      "houses": {
+        "1": 24524
+      },
+      "tenures": {
+        "Sitting MP": 23640,
+        "Nominated Rajya Sabha": 884
+      },
+      "terms": 219,
+      "dates": {
+        "RECOMMENDATION_DATE": {
+          "min": "2018-11-02 00:00:00",
+          "max": "2026-06-30 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2004-06-22 00:00:00",
+          "max": "2024-12-13 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2015-05-31 23:59:59",
+          "max": "2026-07-19 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "SANCTION_DATE": {
+          "min": "2023-06-27 00:00:00",
+          "max": "2026-09-09 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "SANCTION_AMOUNT": {
+          "sum_valid": 2065054699636,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 2,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "completed",
+      "file": "Rajya_Sabha_retired\\05_works_completed.csv",
+      "sha256": "3f323198bdc3a7b3361cb8bfbb34f2c58ec45ccb7e3319713e3d839182965dd5",
+      "bytes": 6385215,
+      "rows": 16282,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "IDA_NAME",
+        "WORK_DESCRIPTION",
+        "MP_NAME",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "LETTER_NO",
+        "ACTUAL_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "ACTUAL_END_DATE",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "WORK_ID",
+        "AVERAGE_RATING",
+        "FILE_STATUS",
+        "ATTACH_ID"
+      ],
+      "missing": {
+        "FILE_STATUS": 5739,
+        "ATTACH_ID": 5739
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 16282,
+      "duplicate_work_ids": 0,
+      "dates": {
+        "ACTUAL_END_DATE": {
+          "min": "2023-08-17 00:00:00",
+          "max": "2026-09-10 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "ACTUAL_AMOUNT": {
+          "sum_valid": 1131021249648,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 44,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "kind": "payments",
+      "file": "Rajya_Sabha_retired\\06_expenditure.csv",
+      "sha256": "3b873f3dd0d6cd7b16254a5ffa1a3996a1103a4ec3a63d54ad63363fa298ccf3",
+      "bytes": 12248556,
+      "rows": 30994,
+      "columns": [
+        "STATE_NAME",
+        "ACTIVITY_NAME",
+        "VENDOR_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "IA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "LETTER_NO",
+        "VENDOR_ID",
+        "EXPENDITURE_DATE",
+        "FUND_DISBURSED_AMT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_STATUS",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "WORK_ID"
+      ],
+      "missing": {},
+      "duplicate_rows_excluding_serial": 413,
+      "work_ids": 21567,
+      "duplicate_work_ids": 9427,
+      "houses": {
+        "1": 30994
+      },
+      "tenures": {
+        "Sitting MP": 29385,
+        "Nominated Rajya Sabha": 1609
+      },
+      "terms": 212,
+      "dates": {
+        "EXPENDITURE_DATE": {
+          "min": "2023-08-03 00:00:00",
+          "max": "2026-09-10 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2004-06-22 00:00:00",
+          "max": "2024-12-13 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2016-06-20 23:59:59",
+          "max": "2026-07-19 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "FUND_DISBURSED_AMT": {
+          "sum_valid": 1640078961292,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      },
+      "statuses": {
+        "Payment Success": 30553,
+        "Payment In-Progress": 441
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "allocations",
+      "file": "Rajya_Sabha_sitting\\01_allocated_limit.csv",
+      "sha256": "294dca8f3c616abd1a74b5e7e3ea812f1cfe8b6aecfdb656db37bcd22e48d94d",
+      "bytes": 36323,
+      "rows": 232,
+      "columns": [
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "TENURE",
+        "Sno",
+        "MP_NAME",
+        "HOUSE_NAME",
+        "CONSTITUENCY",
+        "ALLOCATED_AMT",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE"
+      ],
+      "missing": {},
+      "duplicate_rows_excluding_serial": 0,
+      "houses": {
+        "1": 232
+      },
+      "tenures": {
+        "Sitting MP": 221,
+        "Nominated Rajya Sabha": 11
+      },
+      "terms": 232,
+      "dates": {
+        "TENURE_START_DATE": {
+          "min": "2020-11-26 00:00:00",
+          "max": "2026-07-20 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2026-11-25 23:59:59",
+          "max": "2032-07-19 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "ALLOCATED_AMT": {
+          "sum_valid": 3261197362639,
+          "missing_or_invalid": 6,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 6,
+          "invalid_examples": [
+            "196359074.44000003",
+            "197118521.35000002",
+            "198656208.57000002",
+            "203626524.67000002",
+            "214074707.67000002",
+            "65673638.730000004"
+          ]
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "consents",
+      "file": "Rajya_Sabha_sitting\\02_calamity_consent.csv",
+      "sha256": "000b52ae31c5068f112a7870bc75cfae3caebc7c27a061e0b37bdd21ca6667cc",
+      "bytes": 3457,
+      "rows": 20,
+      "columns": [
+        "HOUSE_OF_PARLIAMENT",
+        "CALAMITY_NAME",
+        "TENURE",
+        "MP_NAME",
+        "CRT_DT",
+        "Sno",
+        "CONSENTED_AMOUNT",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "TYPE"
+      ],
+      "missing": {},
+      "duplicate_rows_excluding_serial": 0,
+      "houses": {
+        "1": 20
+      },
+      "tenures": {
+        "Sitting MP": 18,
+        "Nominated Rajya Sabha": 2
+      },
+      "terms": 16,
+      "dates": {
+        "CRT_DT": {
+          "min": "2024-09-10 00:00:00",
+          "max": "2025-11-17 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2020-11-26 00:00:00",
+          "max": "2024-07-02 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2026-11-25 23:59:59",
+          "max": "2030-07-01 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "CONSENTED_AMOUNT": {
+          "sum_valid": 10450000000,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "recommended",
+      "file": "Rajya_Sabha_sitting\\03_works_recommended.csv",
+      "sha256": "1636c0a0e69d326d68b0eb6793ebb55bc225a7ed072146302508a61492ffdbbb",
+      "bytes": 12119424,
+      "rows": 25369,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "WORK_DESCRIPTION",
+        "RECOMMENDATION_DATE",
+        "RECOMMENDED_AMOUNT",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "WORK_STAGE",
+        "LETTER_NO",
+        "SANCTION_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "SANCTION_DATE",
+        "FILE_STATUS",
+        "ATTACH_ID"
+      ],
+      "missing": {
+        "WORK_DESCRIPTION": 21,
+        "WORK_STAGE": 356,
+        "SANCTION_AMOUNT": 356,
+        "SANCTION_DATE": 5848,
+        "FILE_STATUS": 18782,
+        "ATTACH_ID": 18782
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 25323,
+      "duplicate_work_ids": 46,
+      "houses": {
+        "1": 25369
+      },
+      "tenures": {
+        "Sitting MP": 24259,
+        "Nominated Rajya Sabha": 1110
+      },
+      "terms": 197,
+      "dates": {
+        "RECOMMENDATION_DATE": {
+          "min": "2023-06-14 00:00:00",
+          "max": "2026-09-10 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2020-11-26 00:00:00",
+          "max": "2026-07-20 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2026-11-25 23:59:59",
+          "max": "2032-07-19 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "SANCTION_DATE": {
+          "min": "2023-07-07 00:00:00",
+          "max": "2026-09-10 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "RECOMMENDED_AMOUNT": {
+          "sum_valid": 2247062864521,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        },
+        "SANCTION_AMOUNT": {
+          "sum_valid": 2212958095021,
+          "missing_or_invalid": 356,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "sanctioned",
+      "file": "Rajya_Sabha_sitting\\04_works_sanctioned.csv",
+      "sha256": "24566251fab1ac3fd05d90653d75a608e5e90e45598f62cd8dae9f7ec5016a92",
+      "bytes": 9372561,
+      "rows": 19750,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "WORK_DESCRIPTION",
+        "RECOMMENDATION_DATE",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "WORK_STAGE",
+        "LETTER_NO",
+        "SANCTION_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "SANCTION_DATE",
+        "FILE_STATUS",
+        "ATTACH_ID"
+      ],
+      "missing": {
+        "WORK_DESCRIPTION": 11,
+        "FILE_STATUS": 13163,
+        "ATTACH_ID": 13163
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 19750,
+      "duplicate_work_ids": 0,
+      "houses": {
+        "1": 19750
+      },
+      "tenures": {
+        "Sitting MP": 18788,
+        "Nominated Rajya Sabha": 962
+      },
+      "terms": 178,
+      "dates": {
+        "RECOMMENDATION_DATE": {
+          "min": "2023-06-14 00:00:00",
+          "max": "2026-09-02 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2020-11-26 00:00:00",
+          "max": "2026-06-22 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2026-11-25 23:59:59",
+          "max": "2032-06-21 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "SANCTION_DATE": {
+          "min": "2023-07-07 00:00:00",
+          "max": "2026-09-10 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "SANCTION_AMOUNT": {
+          "sum_valid": 1725090949387,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "completed",
+      "file": "Rajya_Sabha_sitting\\05_works_completed.csv",
+      "sha256": "f54d2b07ea706e727335fbe8882c9e92a0ce4a7a7d5c8a0abfe14705ac02975f",
+      "bytes": 3953904,
+      "rows": 10046,
+      "columns": [
+        "WORK_CATEGORY",
+        "ACTIVITY_NAME",
+        "STATE_NAME",
+        "IDA_NAME",
+        "WORK_DESCRIPTION",
+        "MP_NAME",
+        "FLAG",
+        "CONSTITUENCY_ID",
+        "LETTER_NO",
+        "ACTUAL_AMOUNT",
+        "Sno",
+        "CONSTITUENCY",
+        "ACTUAL_END_DATE",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "FILE_STATUS",
+        "WORK_ID",
+        "ATTACH_ID",
+        "AVERAGE_RATING"
+      ],
+      "missing": {
+        "FILE_STATUS": 3458,
+        "ATTACH_ID": 3458
+      },
+      "duplicate_rows_excluding_serial": 0,
+      "work_ids": 10046,
+      "duplicate_work_ids": 0,
+      "dates": {
+        "ACTUAL_END_DATE": {
+          "min": "2023-08-02 00:00:00",
+          "max": "2026-09-10 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "ACTUAL_AMOUNT": {
+          "sum_valid": 769431277321,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 27,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      }
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "kind": "payments",
+      "file": "Rajya_Sabha_sitting\\06_expenditure.csv",
+      "sha256": "dd629ba934b8aa7535a54d38425ee12190ff0257429a5bf2cd1576ca2ff0e0f2",
+      "bytes": 10049673,
+      "rows": 25349,
+      "columns": [
+        "STATE_NAME",
+        "ACTIVITY_NAME",
+        "VENDOR_NAME",
+        "HOUSE_OF_PARLIAMENT",
+        "IDA_NAME",
+        "IA_NAME",
+        "TENURE",
+        "MP_NAME",
+        "LETTER_NO",
+        "VENDOR_ID",
+        "EXPENDITURE_DATE",
+        "FUND_DISBURSED_AMT",
+        "Sno",
+        "CONSTITUENCY",
+        "WORK_STATUS",
+        "WORK_RECOMMENDATION_DTL_ID",
+        "TENURE_START_DATE",
+        "TENURE_END_DATE",
+        "WORK_ID"
+      ],
+      "missing": {},
+      "duplicate_rows_excluding_serial": 629,
+      "work_ids": 15440,
+      "duplicate_work_ids": 9909,
+      "houses": {
+        "1": 25349
+      },
+      "tenures": {
+        "Sitting MP": 24226,
+        "Nominated Rajya Sabha": 1123
+      },
+      "terms": 171,
+      "dates": {
+        "EXPENDITURE_DATE": {
+          "min": "2023-07-27 00:00:00",
+          "max": "2026-09-10 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_START_DATE": {
+          "min": "2020-11-26 00:00:00",
+          "max": "2026-06-22 00:00:00",
+          "invalid": 0,
+          "bad_examples": []
+        },
+        "TENURE_END_DATE": {
+          "min": "2026-11-25 23:59:59",
+          "max": "2032-06-21 23:59:59",
+          "invalid": 0,
+          "bad_examples": []
+        }
+      },
+      "money_paise": {
+        "FUND_DISBURSED_AMT": {
+          "sum_valid": 1251475382169,
+          "missing_or_invalid": 0,
+          "negative": 0,
+          "zero": 0,
+          "invalid": 0,
+          "invalid_examples": []
+        }
+      },
+      "statuses": {
+        "Payment Success": 24680,
+        "Payment In-Progress": 669
+      }
+    }
+  ],
+  "joins": [
+    {
+      "cohort": "Lok Sabha",
+      "allocated_term_duplicates": 0,
+      "terms_unmatched": {
+        "consents": 0,
+        "recommended": 0,
+        "sanctioned": 0,
+        "payments": 1
+      },
+      "sanctioned_not_recommended": 375,
+      "completed_not_sanctioned": 0,
+      "paid_not_sanctioned": 0,
+      "work_union": 107937
+    },
+    {
+      "cohort": "Rajya_Sabha_retired",
+      "allocated_term_duplicates": 0,
+      "terms_unmatched": {
+        "consents": 0,
+        "recommended": 0,
+        "sanctioned": 0,
+        "payments": 0
+      },
+      "sanctioned_not_recommended": 303,
+      "completed_not_sanctioned": 0,
+      "paid_not_sanctioned": 0,
+      "work_union": 27161
+    },
+    {
+      "cohort": "Rajya_Sabha_sitting",
+      "allocated_term_duplicates": 0,
+      "terms_unmatched": {
+        "consents": 0,
+        "recommended": 0,
+        "sanctioned": 0,
+        "payments": 0
+      },
+      "sanctioned_not_recommended": 229,
+      "completed_not_sanctioned": 0,
+      "paid_not_sanctioned": 0,
+      "work_union": 25552
+    }
+  ],
+  "overlaps": [
+    {
+      "a": "Lok Sabha",
+      "b": "Rajya_Sabha_retired",
+      "work_overlap": {
+        "recommended": 47,
+        "sanctioned": 0,
+        "completed": 0,
+        "payments": 0
+      },
+      "allocated_term_overlap": 0
+    },
+    {
+      "a": "Lok Sabha",
+      "b": "Rajya_Sabha_sitting",
+      "work_overlap": {
+        "recommended": 137,
+        "sanctioned": 0,
+        "completed": 0,
+        "payments": 0
+      },
+      "allocated_term_overlap": 0
+    },
+    {
+      "a": "Rajya_Sabha_retired",
+      "b": "Rajya_Sabha_sitting",
+      "work_overlap": {
+        "recommended": 43,
+        "sanctioned": 0,
+        "completed": 0,
+        "payments": 0
+      },
+      "allocated_term_overlap": 0
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Canonical six_source engine — runtime + build/analysis dependencies.
+# Python 3.12. Install into a virtual env:
+#   python -m venv .venv
+#   .venv/Scripts/python -m pip install -r six_source/requirements.txt
+numpy==2.5.3
+pandas==3.0.5
+scikit-learn==1.9.1    # DBSCAN feature-space clustering in build.py (Isolation Forest stays vendored in isolation.py)
+openpyxl==3.1.5        # Excel review-workbook export only; not needed for CSV/SQLite build

@@ -1,105 +1,142 @@
-# MPLADS Insight — PS 26102
+# MPLADS Anomaly, Fraud & Inefficiency Detection — SIH 2026 PS 26102
 
-Complete local research project: reproducible features across the three supplied datasets, an investigation workspace, a plain Excel dataset, architecture/rollout documentation and an honest offline A/B comparison.
+An AI/ML platform that ingests MPLADS financial and project-execution data and surfaces **anomalies, fraud signals, and inefficiencies** as explainable, risk-ranked, human-reviewable cases — for Members of Parliament, State Nodal Authorities, District Authorities, and the Ministry (MoSPI).
 
-## GitHub repository and first-time setup
+> **Design law:** no anomaly score is fraud evidence or a legal finding. Every alert is a *request for evidence and human review*. Checks with no supporting data (asset photos, SC/ST tags, trust registration, GPS) are shown as **visibly unavailable**, never silently passed. No data leaves the device by default.
 
-This repository includes the three original datasets, final engineered CSV/JSON tables, final Excel workbook, offline A/B results, a ready-to-run local application, source code, tests and documentation. The owner explicitly authorized sharing these real-data artifacts on 7 September 2026, including publication while the repository is public. Changing visibility later cannot recall copies already downloaded.
+Full engineering plan: **[`FINAL_PROJECT_PLAN.md`](FINAL_PROJECT_PLAN.md)**. Domain background: [`PS26102_MPLADS_Context.md`](PS26102_MPLADS_Context.md).
 
-Private review notes/databases, credentials, device-specific hosting settings, installed dependencies, duplicate rebuilds and obsolete exploratory outputs are not included. The existing MIT license applies to source code; inclusion of the supplied MPLADS records does not establish a separate data redistribution license or government endorsement.
+---
 
-For the quickest Windows setup, install Python 3.11+ (tested with 3.12) and select the installer's PATH option, then:
+## Repository layout (canonical)
 
-```powershell
-git clone https://github.com/DevAtomicRelease/mplads-prototype.git
-cd mplads-prototype
-.\START_PROJECT.cmd
-```
-
-The browser opens at http://127.0.0.1:8765/. The included build needs no Node.js, package installation or internet access to run. Alternatively, download the repository ZIP, extract it, and double-click `START_PROJECT.cmd`. Keep the complete folder structure. Use `STOP_PROJECT.cmd` when finished.
-
-The three unchanged workbooks are included under `Dataset/`:
-
-- `Works Sanctioned.xlsx`
-- `Allocated Limit for Honble MPs.xlsx`
-- `Amount consented for Calamity.xlsx`
-
-To verify the delivered file hashes without rebuilding, run `python scripts/verify_team_bundle.py`. To regenerate the code/data outputs, additionally install Node.js 24 LTS and run:
-
-```powershell
-python -m pip install -r pipeline_research/requirements-tested.txt
-npm --prefix mplads-prototype ci
-powershell -NoProfile -File .\REBUILD_PROJECT.ps1 -SkipWorkbook
-```
-
-No cloud deployment or automatic dataset upload is configured. `REBUILD_PROJECT` checks this specific supplied extract's counts and source totals; a different extract requires an explicit data-contract review. The optional final Excel exporter and independent workbook verifier are included as source, but workbook generation additionally requires `@oai/artifact-tool` from the documented local runtime. The supplied final workbook can be reviewed without that library.
-
-`TEAM_DATA_MANIFEST.json` records the released artifacts' sizes and SHA-256 hashes. Rebuilds intentionally change timestamps and may record a different local provenance path, so compare independent reruns with `validation_research/check_reproducibility.py` after rebuilding; the release manifest describes the frozen delivered files, not subsequent regenerated versions.
-
-The nested `mplads-prototype/` directory is the web app. The repository root also contains its connected data pipeline, A/B experiment and Windows launch controls; retain that structure. The original context file is historical background, with rule corrections documented in `mplads-prototype/SOLUTION_PLAN.md`.
-
-## Open the solution
-
-Double-click **START_PROJECT.cmd**, then open **http://127.0.0.1:8765/**. The app runs only on this computer. Use **STOP_PROJECT.cmd** when finished. Notes remain saved after stopping or restarting.
-
-The delivered static build needs only Python 3.11+ to run; it does not need Node or internet access. The launcher prefers the bundled runtime, then a normal Python installation. Set `MPLADS_PYTHON` if your Python executable is elsewhere. An optional port can be supplied through `START_PROJECT.ps1 -Port 8877`.
-
-## Deliverables
-
-| What to review | Location |
+| Path | Role |
 |---|---|
-| Final plain Excel workbook | `outputs/01a06d6b-9b94-7a61-b28b-6f9116f20942/MPLADS_Final_Core_Dataset_2026-09-06.xlsx` |
-| Architecture, research, limitations and rollout | `mplads-prototype/SOLUTION_PLAN.md` |
-| Final verification record | `DELIVERY_VERIFICATION.md` |
-| Released-file integrity manifest and verifier | `TEAM_DATA_MANIFEST.json`, `scripts/verify_team_bundle.py` |
-| All machine-readable feature tables and field dictionary | `pipeline_research/artifacts/` |
-| Raw-data pipeline and regression tests | `pipeline_research/build_features.py`, `test_pipeline.py` |
-| Offline A/B report, scores, benchmark and split manifest | `validation_research/` |
-| Rebuild equality and original-file hash checks | `validation_research/reproducibility_check.json` |
-| Local app source and service | `mplads-prototype/app/`, `lib/`, `scripts/serve_local.py` |
-| Your own local review history (created at runtime; not committed) | `prototype-local-data/reviews.sqlite3` |
+| `Dataset/` | Immutable source CSVs, per cohort: `Lok Sabha/`, `Rajya_Sabha_sitting/`, `Rajya_Sabha_retired/`. Six files each (allocation, calamity consent, recommended, sanctioned, completed, expenditure). **Never edited.** All three build together into 160,701 works. |
+| `run.ps1` | One-command launcher: venv → build → front-end → serve. See **Run & test** below. |
+| `six_source/` | **Canonical engine.** `build.py` (data + feature + detection pipeline), `serve.py` (loopback investigation API), `nlq.py` (local deterministic natural-language query engine), `validate.py` (offline A/B screening comparison), `patterns.py` (relations/pattern report), `isolation.py` (vendored NumPy Isolation Forest), `tests.py` (invariant tests), `common.py` (versioned contracts & hashes). |
+| `mplads-prototype/` | React 19 + Vite + TypeScript front-end (investigation workspace; `app/six-local.tsx`). |
+| `evaluation_18/` | The earlier frozen A/B protocol (reference; superseded by `six_source/validate.py`). |
+| `FINAL_PROJECT_PLAN.md`, `CLAUDE.md` | Full plan; contributor/agent guide. |
+| `archive/` | Superseded three-source iteration, kept for provenance only. See `archive/README.md`. |
 
-The final core dataset contains 10,000 works with 92 total fields, 543 MPs, 381 authorities, 12 calamity consents, 21,092 candidate pairs and 179 field/table definitions. Source totals reconcile and raw workbooks are unchanged. Earlier exploratory Excel versions are preserved only in the original local workspace, not this release; use the **2026-09-06 core** file with this app.
+---
 
-## A short investigation walkthrough
+## Run & test the full project
 
-1. **Portfolio overview:** choose a state and sanction financial year. Summary counts and amounts describe only that selection.
-2. **Review queue:** filter by delay, aging, peer cost or duplicate signal. Search by work ID, description, MP or district. Sort and export matching rows.
-3. **Work evidence:** open a work. Inspect original fields, dates, peer benchmark and each score contribution. Follow the MP/authority or candidate links.
-4. **Duplicate review:** compare both descriptions, dates, amounts, entity evidence and continuation cues. Similarity does not establish duplicate assets.
-5. **Record your review:** choose a disposition and add evidence or a next action. Save, refresh and reopen the work. The latest decision persists; earlier saves remain in local history. Review exports are available in the footer.
-6. **A/B validation:** switch between 5%, 10%, 20% and 30% review budgets. Inspect the aggregate result, scenario trade-offs and selected real works. Download all held-out scores or the report.
-7. **Data & solution plan:** inspect field definitions, rule explanations, source hashes, consents and the rollout plan.
+Python 3.12; Node 22+ only for building the UI. Everything runs locally on `127.0.0.1`.
 
-MP/authority profiles show full-extract aggregates. State/year filters choose connected entities; they do not silently recompute profile history. The A/B lab uses a separate frozen held-out population and is independent of the portfolio filters.
+### One command (Windows, PowerShell)
 
-## What the validation actually says
+```powershell
+.\run.ps1
+```
 
-A is a fixed delay/aging baseline. B adds historical peer cost and duplicate evidence. Reference records are earlier than the held-out records. At a 20% review budget, the controlled benchmark recovers 37.25% versus 52.75% of scenario-assigned cases: **+15.5 percentage points**, paired 95% interval **+12.0 to +18.25 points**.
+First run creates the virtual environment, builds the dataset (**build → patterns → A/B validation**) and the front-end if they are missing, then serves the app at **http://127.0.0.1:8766/**. `-Rebuild` forces a fresh dataset build; `-Port <n>` changes the port. (Desktop app: the `mplads-guard` preview in `.claude/launch.json` runs this.)
 
-This is **not a live randomized trial or fraud accuracy result**. B gains cost/duplicate coverage while losing delay/aging coverage. Real outcomes, false-positive rates and time savings cannot be measured without independently adjudicated labels. The full report describes the frozen design, seeds, uncertainty, unchanged background and prospective trial protocol.
+### Step by step
 
-## Rebuild everything locally
+```powershell
+# 1. Python environment
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -r six_source/requirements.txt   # numpy, pandas, scikit-learn, openpyxl
 
-Double-click **REBUILD_PROJECT.cmd**. It runs raw ingestion, features, pipeline tests, A/B, independent reruns, equality checks, dashboard/service tests, type checking, the static build and Excel export. It stops on failure. Restart the app after a rebuild. Raw files and review notes are not overwritten.
+# 2. Build the connected, audited dataset — all cohorts -> 160,701 works, 21/21 checks
+cd six_source
+..\.venv\Scripts\python build.py
+# ..\.venv\Scripts\python build.py --cohorts lok_sabha          # a single cohort
 
-For code/data rebuilds without regenerating the large workbook, run `REBUILD_PROJECT.ps1 -SkipWorkbook`. Rebuild requirements are Python with NumPy/Pandas plus Node.js 24 LTS and application dependencies. `pipeline_research/requirements.txt` states supported Python library ranges; the validation report records exact tested versions. App versions are pinned in `mplads-prototype/package-lock.json`.
+# 3. Reports (after build)
+..\.venv\Scripts\python patterns.py     # -> local/DATA_PATTERNS.md   (relations & patterns)
+..\.venv\Scripts\python validate.py     # -> local/ab_metrics.json + AB_Report.md (offline A/B)
 
-On a new machine, install Python dependencies from that requirements file and run `npm ci` in `mplads-prototype` before rebuilding. Package installation needs internet access but does not upload datasets. Excel regeneration additionally requires the bundled `@oai/artifact-tool` library; its builder uses a local dependency junction. The already-delivered workbook and static app work without that library.
+# 4. Tests — 14 fast invariant checks
+..\.venv\Scripts\python tests.py
+# ..\.venv\Scripts\python tests.py --rebuild    # + reproducibility (fresh rebuild -> identical hash)
 
-## Data boundaries and operational limits
+# 5. Front-end (needs Node; once)
+cd ..\mplads-prototype
+npm ci                 # install dependencies (fresh clone / first run)
+npm run build:six      # emits dist/six/
 
-- The works export is capped at 10,000 rows and contains only **12.75% of its reported sanction value**. It is not complete national coverage or a representative sample.
-- Sanctions are not expenditure. Allocation periods, payments, revised estimates, asset dimensions, progress history and fraud labels are absent.
-- Recommendation dates proxy IDA receipt. Sanction age proxies duration at the latest sanction date; progress-update dates and MCC exclusions are missing.
-- Scores and similar descriptions request investigation. They are not findings of misuse, overpricing, duplicate assets or non-compliance.
-- Local review history records a version and source fingerprints. It is application-append-only, not tamper-proof, authenticated or shared across officers. Protect the device and back up the whole project while the service is stopped.
-- The owner-authorized repository release includes the supplied source/derived datasets and selected final artifacts. Repository access controls who can download them; a public repository makes them available to everyone. App processing and newly created review notes stay on each user's computer, and review stores remain excluded from Git. No hosting deployment, analytics or external font requests are used. Early scaffold hosting metadata is inactive and excluded; it is not authorization to deploy.
+# 6. Serve the local app + API (loopback only)
+cd ..\six_source
+..\.venv\Scripts\python serve.py --port 8766
+```
 
-Before government use: obtain authorized complete sources, approve effective rule versions, add identity/role scopes, secure storage and recovery, run independent adjudication and conduct the prospective trial in the solution plan.
+Open **http://127.0.0.1:8766/**. `build.py` fails closed unless every source file's row count **and** SHA-256 match the frozen contract in `common.py` and all 21 reconciliation checks pass. Outputs (CSV + indexed `mplads.sqlite3` + `audit.json`) land in `six_source/local/` (git-ignored; local by design).
 
-## Troubleshooting and acceptance
+### Front-end development
 
-If the app cannot load, check `prototype-local-data/server-errors.log`, then use STOP and START. If the port is occupied by another application, select another port; do not stop an unrelated process. If a review fails, the app shows an error rather than claiming it saved. Notes should be exported/backed up as working records, not treated as official audit findings.
+```powershell
+cd mplads-prototype
+npm run dev:six        # Vite hot-reload at http://127.0.0.1:3001, proxies /api to :8766
+```
 
-Automated checks cover source integrity, joins, totals, score explanations, filters/exports, A/B design, reproducibility, persistence, host/origin guards, compilation and local HTTP. The workbook's summary and representative ranges on every sheet have been rendered and inspected. A browser click-through acceptance check is still a user/pilot task; no automated browser end-to-end test is claimed.
+Run `python ../six_source/serve.py` in another shell. The six-source UI has its own config `vite.six.config.ts` (entry `six.html` → `app/six-local.tsx`, output `dist/six/`); `serve.py` serves `dist/six/` at the web root and handles `/api/*` from the read-only SQLite. The legacy three-source UI (`index.html` → `dist/local`) is retained but superseded.
+
+---
+
+## Data pipeline (what `build.py` does)
+
+1. **Contracts & quarantine** — hash-lock every source (per cohort); quarantine invalid rows (one truncated expenditure row) without touching source files.
+2. **One-work master** — union recommendation ∪ sanction across all cohorts → **160,701 works**, one row each; sanction export governs sanctioned fields. Keys are namespaced `cohort:mpkey:id` (the Rajya Sabha portal reuses work ids across MPs). Money kept in **integer paise**.
+3. **Lifecycle + cost features** — aging, chronology flags, year-end (March) disbursement share, and cost benchmarks computed from **prior fiscal years only** (leakage guard).
+4. **Bounded duplicate candidates** — normalized-text, IDA·activity-blocked, weighted-token similarity with number/generic/phase guards.
+5. **Explained rules + separate unsupervised models** — a 10-rule deterministic engine → `priority_score` (capped 100) + per-point `Rule_Contributions` and 5 bands (Routine/Low/Medium/High/Critical); plus two **separate** descriptive views kept out of the queue — an Isolation Forest `isolation_percentile` and a DBSCAN `dbscan_outlier_flag`.
+6. **Entity rollups** — MP, IDA, vendor, vendor-connection edges, IDA·FY concentration (HHI), monthly payments.
+7. **Outputs** — CSV + indexed SQLite + `audit.json` + `review_workbook.json`.
+8. **Reconciliation gate** — 21 checks (membership counts, paise-exact money sums recomputed from source, score↔contribution equality, no future events, source bytes unchanged); build fails closed on any failure.
+
+Reproducible: fixed `SEED=26102`; pipeline/common SHA recorded in `audit.json`; independent rebuild comparable by output hash.
+
+**Tests:** `python six_source/tests.py` runs 14 fast invariant checks (build reconciliation, namespaced-key uniqueness, score↔contribution equality, band thresholds, unsupervised-signal consistency, NL-query injection-safety/determinism, A/B properties). `python six_source/tests.py --rebuild` adds an end-to-end reproducibility check (fresh rebuild → identical `Work_Features.csv` hash).
+
+### Detection layers → problem-statement asks
+
+- **Financial** — cost outliers (prior-FY robust log-MAD z), payment/completion-vs-sanction deltas, repeated-payment-report sensitivity, vendor concentration (HHI).
+- **Execution** — duplicate/near-duplicate works, stalled-open aging, sanction delay, completion-without-payment.
+- **Compliance & operations** — deterministic rules: sanction delay >45d, open >1yr, no payment >3mo, year-end (March) disbursement concentration. (SC/ST %, ₹75L trust ceiling, jurisdiction, payment-vs-physical-progress: **unavailable** — the exports carry no beneficiary tags, trust register, coordinates or physical-progress %, so these are shown unavailable, not passed.)
+- **Inefficiency** — utilization ratios and category mix at MP/IDA grain.
+- **Unsupervised** — Isolation Forest atypicality and DBSCAN feature-space outliers, both deliberately separate from the rule queue and complementary to each other.
+
+Supervised fraud classification is **Phase-2**, unlocked once investigators label reviewed cases through the feedback loop.
+
+---
+
+## What the data shows
+
+Generated by `six_source/patterns.py` (full report in `six_source/local/DATA_PATTERNS.md`). All-cohort build = **160,701 works** across Lok Sabha + Rajya Sabha (sitting/retired). Settled-vs-sanction differs sharply by cohort: **LS 41.6%, RS-sitting 70.9%, RS-retired 78.4%**.
+
+- **Funnel:** 159,794 recommended → 124,155 sanctioned → 61,268 completed.
+- **Queue:** 129,248 works (80.4%) carry ≥1 screen; bands Routine 31,453 / Low 84,348 / Medium 38,277 / High 6,623 / Critical 0.
+- **Dominant signals:** sanction-delay >45d proxy 86,264 (53.7%), no-payment-after-3mo 37,067, pending-recommendation >45d 24,936, open >1yr 18,947, year-end (March) rush 5,899.
+- **Anomaly signals:** high-cost-peer 4,792, near-duplicate-review 6,521 (35,452 candidate pairs), DBSCAN pattern outliers 5,748.
+- **Integrity result:** `paid_over_sanction` = 1 and `completion_over_sanction` = 0 — a legitimate near-clean result on the supplied fields, not a masked failure.
+- **Critical band = 0:** the top observed score is 64; the 81–100 tier is empty and would populate for a genuinely extreme work.
+
+Numbers are descriptive of the supplied exports, not verified national totals.
+
+---
+
+## Ask the data (local NL→SQL)
+
+`six_source/nlq.py` answers plain-English questions (*"Which districts in Bihar have the most delays?"*, *"States with the lowest settled-to-sanction ratio"*) **entirely locally** — a deterministic intent parser maps the question to an allow-listed, parameterised aggregate over `Work_Features`, and returns an interpretation, a source-tied summary, a formatted table, and the **exact generated SQL**. No external LLM, no data egress, no hallucination — every number is reproducible from the shown query. Served at `/api/ask`; the "Ask the data" tab exposes it with example prompts.
+
+## Validation (`six_source/validate.py`, "A/B validation" tab)
+
+`validate.py` runs an offline A/B screening comparison on the six_source build and writes `local/ab_metrics.json` (served at `/api/validation`) plus `AB_Report.md` and CSVs. Two evidence layers, no fraud-accuracy claim:
+1. **Real retrospective queue comparison** — baseline **A** (seven operational/payment screens) vs enhanced **B** (A + cost-outlier + near-duplicate) on the actual build; report queue **overlap** (Jaccard) at equal review budgets.
+2. **Controlled mechanism benchmark** — seeded synthetic cases whose labels record which screen should fire. The two B-only families (inflated cost, near-duplicate) are scored zero by A, so B's advantage at a fixed budget comes from the enhancement. Reported as recovery per budget with a paired bootstrap 95% interval and per-family selection counts.
+
+Representative result: at a 10% review budget B recovers ~100% vs A's ~78% (+~22 pp), because A ranks cost/duplicate cases as zero; at 5% both are equal (neither budget fits every positive). The earlier `evaluation_18/` protocol (`PROTOCOL.md`) informed this design but is coupled to the archived namespaced release.
+
+---
+
+## Security & privacy
+
+Loopback-only (`127.0.0.1`), exact-Host check, read-only SQLite URI, strict CSP, same-origin review writes, no query strings in logs, source bytes verified unchanged every build. No external LLM or cloud call by default. Generated outputs and review notes stay local.
+
+## License
+
+MIT for source code (`LICENSE`). Inclusion of supplied MPLADS records establishes no separate data-redistribution license or government endorsement.
