@@ -23,6 +23,7 @@ if ($Rebuild -or -not (Test-Path $audit)) {
     & $py (Join-Path $root 'six_source/build.py')
     & $py (Join-Path $root 'six_source/patterns.py')
     & $py (Join-Path $root 'six_source/validate.py')
+    & $py (Join-Path $root 'six_source/workbook.py')
 }
 
 $dist = Join-Path $root 'mplads-prototype/dist/six/six.html'

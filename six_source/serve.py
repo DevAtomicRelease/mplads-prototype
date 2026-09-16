@@ -12,9 +12,22 @@ import shutil
 import sqlite3
 
 import nlq
+from common import sha
 from urllib.parse import parse_qs, unquote, urlsplit
 
 WORK_KEY=re.compile(r"[a-z_]+:[a-z0-9]*:\d+")
+
+
+def stale_reason(meta, dataset=None):
+    """Return why the served build is stale (source changed/missing since build), else ''."""
+    dataset = dataset or ROOT / "Dataset"
+    for s in meta.get("sources", []):
+        path = dataset / s["file"]
+        if not path.is_file():
+            return f"source {s['file']} is missing since the build"
+        if sha(path) != s["sha256"]:
+            return f"source {s['file']} changed since the build"
+    return ""
 
 ROOT=Path(__file__).resolve().parents[1]
 LOCAL=Path(__file__).parent/"local"
@@ -64,9 +77,12 @@ def page(params):
     return size,offset
 
 
-def make_server(port=8766,local=LOCAL,review_db=None,directory=None):
+def make_server(port=8766,local=LOCAL,review_db=None,directory=None,verify=True):
     meta=json.loads((local/"audit.json").read_text(encoding="utf-8"))
     if not meta.get("all_checks_passed"):raise ValueError("Build is not verified")
+    if verify:
+        reason=stale_reason(meta)
+        if reason:raise ValueError(f"Refusing to serve a stale build: {reason}. Re-run build.py.")
     review_db=review_db or local/"reviews.sqlite3"
     review_db.parent.mkdir(parents=True,exist_ok=True)
     with connect(review_db,False) as db:
@@ -106,7 +122,7 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_HEAD()
 
     def download(self,name):
-        allowed={"Work_Features.csv","Payment_Features.csv","Duplicate_Candidates.csv","MP_Features.csv","IDA_Features.csv","Vendor_Features.csv","Vendor_Connections.csv","Monthly_Payments.csv","Calamity_Consents.csv","Feature_Dictionary.csv","Quarantine.csv","audit.json","AB_Report.md","ab_metrics.json","ab_controlled_benchmark.csv","ab_actual_scores.csv","reproducibility.json"}
+        allowed={"Work_Features.csv","Payment_Features.csv","Duplicate_Candidates.csv","MP_Features.csv","IDA_Features.csv","Vendor_Features.csv","Vendor_Connections.csv","Monthly_Payments.csv","Calamity_Consents.csv","Feature_Dictionary.csv","Quarantine.csv","audit.json","AB_Report.md","ab_metrics.json","ab_controlled_benchmark.csv","ab_actual_scores.csv","reproducibility.json","MPLADS_Review.xlsx"}
         if name=="MPLADS_Six_Source_Review.xlsx":
             file=ROOT/"outputs/six-source-2026-09-09/MPLADS_Six_Source_Review.xlsx"
         elif name in allowed:file=self.server.local/name
@@ -217,8 +233,10 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__=="__main__":
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument("--port",type=int,default=8766);args=parser.parse_args()
-    server=make_server(args.port)
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument("--port",type=int,default=8766)
+    parser.add_argument("--no-verify",action="store_true",help="Skip the stale-build source-hash check (e.g. serving a prebuilt local without the Dataset present)")
+    args=parser.parse_args()
+    server=make_server(args.port,verify=not args.no_verify)
     print(f"MPLADS Six Source: http://127.0.0.1:{server.server_port}/",flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass

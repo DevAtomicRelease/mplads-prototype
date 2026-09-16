@@ -143,6 +143,63 @@ class Validation(unittest.TestCase):
             self.assertGreater(s["b_selected"], s["a_selected"])
 
 
+class FailureHandling(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not (LOCAL / "audit.json").is_file():
+            raise unittest.SkipTest("Run build.py first")
+        cls.meta = json.loads((LOCAL / "audit.json").read_text(encoding="utf-8"))
+
+    def test_unknown_cohort_fails_closed(self):
+        import build
+        from common import ROOT
+        with self.assertRaises(ValueError):
+            build.load_sources(ROOT / "Dataset", ["not_a_cohort"])
+
+    def test_stale_build_detected(self):
+        import serve
+        self.assertEqual(serve.stale_reason(self.meta), "", "current build should be fresh")
+        tampered = json.loads(json.dumps(self.meta))
+        tampered["sources"][0]["sha256"] = "0" * 64
+        self.assertTrue(serve.stale_reason(tampered), "a changed source hash must be reported stale")
+
+    def test_missing_source_detected(self):
+        import serve
+        tampered = json.loads(json.dumps(self.meta))
+        tampered["sources"] = [{"file": "Nowhere/missing.csv", "sha256": "0" * 64}]
+        self.assertIn("missing", serve.stale_reason(tampered))
+
+
+class EndToEnd(unittest.TestCase):
+    """Demo smoke test: start the loopback server and exercise the key endpoints."""
+    @classmethod
+    def setUpClass(cls):
+        if not (LOCAL / "mplads.sqlite3").is_file():
+            raise unittest.SkipTest("Run build.py first")
+        import threading, serve
+        cls.server = serve.make_server(port=0, verify=False)
+        cls.port = cls.server.server_port
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown(); cls.server.server_close()
+
+    def _get(self, path):
+        import urllib.request
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=10) as r:
+            return r.status, json.loads(r.read())
+
+    def test_endpoints(self):
+        import urllib.parse
+        s, health = self._get("/api/health"); self.assertEqual(s, 200); self.assertTrue(health["localOnly"])
+        s, works = self._get("/api/works?limit=1"); self.assertEqual(s, 200); self.assertGreater(works["summary"]["total"], 0)
+        s, ov = self._get("/api/overview"); self.assertEqual(s, 200); self.assertGreater(ov["national"]["works"], 0)
+        s, ask = self._get("/api/ask?q=" + urllib.parse.quote("which states have the most high-priority works")); self.assertEqual(s, 200); self.assertGreater(ask["row_count"], 0)
+        s, val = self._get("/api/validation"); self.assertEqual(s, 200); self.assertTrue(val["budgets"])
+
+
 def _reproducibility():
     import tempfile, subprocess
     from common import sha
