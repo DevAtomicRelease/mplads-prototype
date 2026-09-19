@@ -16,9 +16,9 @@
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "dev:six": "vite --config vite.six.config.ts --host 127.0.0.1",
     "build": "vite build",
-    "build:six": "vite build --config vite.six.config.ts",
+    "dev:legacy": "vite --host 127.0.0.1 --open /legacy.html",
+    "preview": "vite preview --host 127.0.0.1",
     "lint": "oxlint",
     "format": "oxfmt"
   },

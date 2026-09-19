@@ -26,13 +26,13 @@ if ($Rebuild -or -not (Test-Path $audit)) {
     & $py (Join-Path $root 'six_source/workbook.py')
 }
 
-$dist = Join-Path $root 'mplads-prototype/dist/six/six.html'
+$dist = Join-Path $root 'mplads-prototype/dist/index.html'
 if (-not (Test-Path $dist)) {
     Write-Host 'Building front-end...'
     Push-Location (Join-Path $root 'mplads-prototype')
     try {
         if (-not (Test-Path 'node_modules/vite/bin/vite.js')) { npm ci }
-        npm run build:six
+        npm run build
     } finally { Pop-Location }
 }
 

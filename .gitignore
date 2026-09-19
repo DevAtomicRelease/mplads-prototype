@@ -68,10 +68,8 @@ pipeline_research/workbook/verification.json
 outputs/01a06d6b-9b94-7a61-b28b-6f9116f20942/*
 !outputs/01a06d6b-9b94-7a61-b28b-6f9116f20942/MPLADS_Final_Core_Dataset_2026-09-06.xlsx
 
-# Include the runnable local frontend, not old server/hosting build outputs.
-!mplads-prototype/dist/
-mplads-prototype/dist/*
-!mplads-prototype/dist/local/
+# The front-end build output is a local artifact, rebuilt by the launcher.
+mplads-prototype/dist/
 
 # New six-source research is local pending separate publication authorization.
 data_preparation/local/

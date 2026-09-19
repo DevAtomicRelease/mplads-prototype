@@ -88,7 +88,7 @@ def make_server(port=8766,local=LOCAL,review_db=None,directory=None,verify=True)
     with connect(review_db,False) as db:
         db.execute("CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY, record_key TEXT NOT NULL, outcome TEXT NOT NULL, note TEXT NOT NULL, created TEXT NOT NULL, version TEXT NOT NULL)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_review_record_version ON reviews(record_key,version,id)")
-    server=ThreadingHTTPServer(("127.0.0.1",port),partial(Handler,directory=str(directory or ROOT/"mplads-prototype/dist/six")))
+    server=ThreadingHTTPServer(("127.0.0.1",port),partial(Handler,directory=str(directory or ROOT/"mplads-prototype/dist")))
     server.local,server.review_db,server.meta=local,review_db,meta
     server.version=meta["version"]+":"+meta["source_fingerprint"]+":"+meta.get("work_features_sha256",meta["as_of"])
     return server
@@ -209,7 +209,7 @@ class Handler(SimpleHTTPRequestHandler):
         except (ValueError,TypeError) as exc:return self.reply({"error":str(exc)},400)
         except sqlite3.Error:return self.reply({"error":"Local data query failed; verify the dataset build"},500)
         if route.startswith("/api/"):return self.reply({"error":"Unknown endpoint"},404)
-        if route=="/":self.path="/six.html"
+        if route=="/":self.path="/index.html"
         return super().do_GET()
 
     def do_POST(self):
