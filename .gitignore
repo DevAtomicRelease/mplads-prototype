@@ -97,3 +97,6 @@ mplads-prototype/dist/six/
 # Superseded heavy export artifacts — never publish
 archive/outputs/
 *.inspect.ndjson
+
+# Local versioned releases (built by prepare_release.py)
+six_source/releases/

@@ -36,6 +36,59 @@ SIGNALS={"pending_recommendation_45d_flag","sanction_delay_45d_flag","open_over_
 OUTCOMES={"Needs evidence","Expected variation","Data issue","Substantiated issue"}
 TABLES={"mps":("MP_Features","mp_name","successful_payment_paise"),"idas":("IDA_Features","ida_name","successful_payment_paise"),"vendors":("Vendor_Features","vendor_name","successful_payment_paise"),"payments":("Payment_Features","vendor_name","source_record"),"dictionary":("Feature_Dictionary","field","table")}
 
+# ---- allow-listed background jobs (no arbitrary shell endpoint) ----
+import subprocess, sys, threading, uuid
+from collections import deque
+# name -> (script, human title, progress denominator or None)
+ALLOWED_JOBS={
+    "tests":("tests.py","Run invariant and end-to-end checks",None),
+    "validate":("validate.py","Re-run offline A/B validation",None),
+    "workbook":("workbook.py","Generate the Excel review workbook",None),
+    "reproduce":("reproduce.py","Independent rebuild and reproducibility check",8),
+    "prepare_release":("prepare_release.py","Build, validate and activate a new release",8),
+}
+JOBS={}
+JOB_LOCK=threading.Lock()
+
+def _sanitize(line):
+    # Never leak absolute paths, and cap length; jobs print only their own progress.
+    return line.replace(str(ROOT),".").replace(str(ROOT).replace("\\","/"),".")[:400]
+
+def _run_job(job):
+    import re as _re
+    script,_title,total=ALLOWED_JOBS[job["name"]]
+    job["state"]="running";job["started"]=datetime.now(timezone.utc).isoformat()
+    try:
+        proc=subprocess.Popen([sys.executable,script],cwd=str(Path(__file__).parent),stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8",errors="replace")
+        buf=deque(maxlen=120)
+        for raw in proc.stdout:
+            line=_sanitize(raw.rstrip());buf.append(line);job["log"]=list(buf)
+            step=_re.search(r"\b(\d+)\s*/\s*(\d+)\b",line)
+            if step and total:job["progress"]=max(job["progress"],min(1.0,int(step.group(1))/int(step.group(2))))
+        code=proc.wait();job["exit_code"]=code
+        job["state"]="completed" if code==0 else "failed"
+        if code==0:job["progress"]=1.0
+    except Exception as exc:
+        job["state"]="failed";job["error"]=_sanitize(str(exc))
+    job["finished"]=datetime.now(timezone.utc).isoformat()
+
+def start_job(name):
+    if name not in ALLOWED_JOBS:raise ValueError("Unknown job")
+    with JOB_LOCK:
+        for j in JOBS.values():
+            if j["name"]==name and j["state"] in ("queued","running"):
+                raise ValueError(f"A '{name}' job is already {j['state']}")
+        jid=uuid.uuid4().hex[:12]
+        job={"id":jid,"name":name,"title":ALLOWED_JOBS[name][1],"state":"queued","progress":0.0,"created":datetime.now(timezone.utc).isoformat(),"log":[],"exit_code":None}
+        JOBS[jid]=job
+    threading.Thread(target=_run_job,args=(job,),daemon=True).start()
+    return job
+
+def job_view(job,full=False):
+    v={k:job.get(k) for k in ("id","name","title","state","progress","created","started","finished","exit_code")}
+    if full:v["log"]=job.get("log",[]);v["error"]=job.get("error")
+    return v
+
 
 def connect(path,readonly=True):
     db=sqlite3.connect(path.resolve().as_uri()+"?mode=ro",uri=True,timeout=15) if readonly else sqlite3.connect(path,timeout=15)
@@ -121,6 +174,28 @@ class Handler(SimpleHTTPRequestHandler):
         if not self.allowed_host():return self.send_error(403)
         return super().do_HEAD()
 
+    def status(self):
+        m=self.server.meta;local=self.server.local
+        def present(name):
+            p=local/name;return {"available":p.is_file(),"bytes":(p.stat().st_size if p.is_file() else 0)}
+        repro=None;rp=local/"reproducibility.json"
+        if rp.is_file():
+            try:repro=json.loads(rp.read_text(encoding="utf-8"))
+            except Exception:repro=None
+        with connect(self.server.review_db) as db:
+            reviews=db.execute("SELECT COUNT(*) FROM reviews WHERE version=?",[self.server.version]).fetchone()[0]
+        reason=stale_reason(m)
+        return {
+            "version":self.server.version,"as_of":m.get("as_of"),"cohorts":m.get("cohorts"),"scope":m.get("scope"),
+            "all_checks_passed":m.get("all_checks_passed"),"checks":m.get("checks"),
+            "source_fresh":not reason,"stale_reason":reason,
+            "sources":[{"cohort":s.get("cohort"),"file":s.get("file"),"rows":s.get("rows"),"accepted":s.get("accepted_rows"),"quarantined":s.get("quarantined_rows"),"sha256":s.get("sha256")} for s in m.get("sources",[])],
+            "totals":m.get("totals"),"table_shapes":m.get("table_shapes"),"rule_counts":m.get("rule_counts"),"priority_counts":m.get("priority_counts"),
+            "rules":m.get("rules"),"limits":m.get("limits"),"research":m.get("research"),"duplicate_method":m.get("duplicate_method"),
+            "artifacts":{k:present(v) for k,v in {"ab_metrics":"ab_metrics.json","workbook":"MPLADS_Review.xlsx","patterns":"DATA_PATTERNS.md","reproducibility":"reproducibility.json","quarantine":"Quarantine.csv","audit":"audit.json"}.items()},
+            "reproducibility":repro,"reviews":reviews,
+        }
+
     def download(self,name):
         allowed={"Work_Features.csv","Payment_Features.csv","Duplicate_Candidates.csv","MP_Features.csv","IDA_Features.csv","Vendor_Features.csv","Vendor_Connections.csv","Monthly_Payments.csv","Calamity_Consents.csv","Feature_Dictionary.csv","Quarantine.csv","audit.json","AB_Report.md","ab_metrics.json","ab_controlled_benchmark.csv","ab_actual_scores.csv","reproducibility.json","MPLADS_Review.xlsx"}
         if name=="MPLADS_Six_Source_Review.xlsx":
@@ -137,6 +212,11 @@ class Handler(SimpleHTTPRequestHandler):
         url=urlsplit(self.path);route=unquote(url.path);params=parse_qs(url.query)
         if route=="/api/health":return self.reply({"application":"MPLADS Six Source","version":self.server.version,"localOnly":True})
         if route=="/api/meta":return self.reply({**self.server.meta,"review_version":self.server.version})
+        if route=="/api/status":return self.reply(self.status())
+        if route=="/api/jobs":return self.reply({"jobs":[job_view(j) for j in sorted(JOBS.values(),key=lambda x:x["created"],reverse=True)],"available":[{"name":k,"title":v[1]} for k,v in ALLOWED_JOBS.items()]})
+        if route.startswith("/api/jobs/"):
+            job=JOBS.get(route.removeprefix("/api/jobs/"))
+            return self.reply(job_view(job,full=True)) if job else self.reply({"error":"Unknown job"},404)
         if route=="/api/validation":
             path=self.server.local/"ab_metrics.json"
             return self.reply(json.loads(path.read_text(encoding="utf-8"))) if path.is_file() else self.reply({"error":"Run six_source/validate.py first"},503)
@@ -215,7 +295,18 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         origin=self.headers.get("Origin","")
         if not self.allowed_host() or origin!=f'http://{self.headers.get("Host", "")}':return self.reply({"error":"Local same-origin write required"},403)
-        if urlsplit(self.path).path!="/api/reviews":return self.reply({"error":"Unknown endpoint"},404)
+        path=urlsplit(self.path).path
+        if path=="/api/jobs":
+            try:
+                size=int(self.headers.get("Content-Length","0"))
+                if not 0<size<=1024:return self.reply({"error":"Job request too large"},413)
+                if self.headers.get("Content-Type","").split(";")[0]!="application/json":return self.reply({"error":"JSON required"},415)
+                name=json.loads(self.rfile.read(size)).get("name")
+                job=start_job(name)
+                return self.reply({"started":True,**job_view(job)})
+            except ValueError as exc:return self.reply({"error":str(exc)},409)
+            except (TypeError,json.JSONDecodeError):return self.reply({"error":"Invalid job request"},400)
+        if path!="/api/reviews":return self.reply({"error":"Unknown endpoint"},404)
         try:
             size=int(self.headers.get("Content-Length","0"))
             if not 0<size<=16384:return self.reply({"error":"Review payload limit is 16 KiB"},413)
