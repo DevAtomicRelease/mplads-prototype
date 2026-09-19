@@ -27,9 +27,11 @@ INR_COLS = ("_paise",)
 def _sheet(wb, title, frame, money_to_inr=True, width=22, wrap=None):
     ws = wb.create_sheet(title[:31])
     frame = frame.copy()
-    for c in frame.columns:
-        if money_to_inr and c.endswith("_paise"):
-            frame[c] = (pd.to_numeric(frame[c], errors="coerce") / 100).round(2)
+    money = [c for c in frame.columns if money_to_inr and c.endswith("_paise")]
+    for c in money:
+        frame[c] = (pd.to_numeric(frame[c], errors="coerce") / 100).round(2)  # paise -> rupees
+    # A converted column holds rupees now; relabel so no rupee value keeps a paise name.
+    frame = frame.rename(columns={c: c[:-len("_paise")].rstrip("_").replace("_", " ") + " (INR)" for c in money})
     ws.append(list(frame.columns))
     for cell in ws[1]:
         cell.font = HEAD; cell.fill = HEADFILL; cell.alignment = Alignment(vertical="center")
@@ -48,7 +50,7 @@ def build(local: Path, out: Path | None = None):
     wb = Workbook(); wb.remove(wb.active)
 
     # Overview
-    t = meta["totals"]; inr = lambda p: round(p / 1e7, 2)  # INR crore
+    t = meta["totals"]; inr = lambda p: round(p / 1e9, 2)  # paise -> INR crore (1 cr = 1e7 rupees = 1e9 paise)
     ov = [("Snapshot date", meta["as_of"]), ("Cohorts", ", ".join(meta.get("cohorts", []))),
           ("Works", t["works"]), ("Recommended", t["recommendations"]), ("Sanctioned", t["sanctions"]),
           ("Reported complete", t["completions"]),

@@ -127,20 +127,24 @@ class Validation(unittest.TestCase):
         cls.m = json.loads(p.read_text(encoding="utf-8"))
 
     def test_budgets_and_shape(self):
+        # Shape and internal consistency only. The evaluation is NOT constrained to make
+        # the enhanced method win; B is allowed to lose at any budget.
         self.assertTrue(self.m["budgets"])
         for b in self.m["budgets"]:
             self.assertEqual(len(b["ci95"]), 2)
             self.assertEqual(len(b["scenarios"]), 9)
-            self.assertGreaterEqual(b["b_recovery"], b["a_recovery"] - 1e-9,
-                                    "enhanced B should not recover less than baseline A")
             self.assertAlmostEqual(b["difference"], b["b_recovery"] - b["a_recovery"], places=6)
+            for arm in ("a", "b"):
+                self.assertEqual(b[f"{arm}_false_alerts"], b[f"{arm}_reviewed"] - round(b[f"{arm}_recovery"] * self.m["synthetic_positives"]))
 
     def test_enhancement_recovers_b_only_families(self):
+        # Definitional (baseline A scores the cost/duplicate families zero, so it can only
+        # pick them by tie luck): B must not recover FEWER of them than A. Not a win guarantee.
         b10 = next(b for b in self.m["budgets"] if abs(b["fraction"] - 0.10) < 1e-9)
         bonly = [s for s in b10["scenarios"] if "B only" in s["scenario"]]
         self.assertEqual(len(bonly), 2)
         for s in bonly:
-            self.assertGreater(s["b_selected"], s["a_selected"])
+            self.assertGreaterEqual(s["b_selected"], s["a_selected"])
 
 
 class FailureHandling(unittest.TestCase):

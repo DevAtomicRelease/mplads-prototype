@@ -36,9 +36,19 @@ def main(local: Path, out: Path, input_dir: Path):
     mismatch = [k for k in keys if a.get(k) != b[k]]
     for k in keys:
         print(("  OK   " if a.get(k) == b.get(k) else "  DIFF ") + k)
+    from datetime import datetime, timezone
+    report = {
+        "reproducible": not mismatch,
+        "artifacts": {k: {"local": a.get(k), "rebuilt": b[k], "match": a.get(k) == b[k]} for k in keys},
+        "generated": datetime.now(timezone.utc).isoformat(),
+        "as_of": as_of, "cohorts": cohorts, "version": meta.get("version"),
+        "source_fingerprint": meta.get("source_fingerprint"), "pipeline_sha256": meta.get("pipeline_sha256"),
+        "common_sha256": meta.get("common_sha256"), "release_dir": str(out),
+    }
+    (local / "reproducibility.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     if mismatch:
         raise SystemExit(f"REPRODUCIBILITY FAILED: {len(mismatch)} artifact(s) differ: {mismatch}")
-    print(f"REPRODUCIBLE: all {len(keys)} artifacts byte-identical to {local}.")
+    print(f"REPRODUCIBLE: all {len(keys)} artifacts byte-identical to {local}. Wrote reproducibility.json.")
 
 
 if __name__ == "__main__":

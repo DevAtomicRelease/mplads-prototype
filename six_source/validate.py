@@ -124,9 +124,10 @@ def generate(rng):
 
     for _ in range(INSTANCES):
         amt = jitter(PEER_MEDIAN)
-        # Recent (< 1 year before the snapshot) so "open beyond one year" does not fire
-        # except where a family intends it (stalled / late completion use old dates).
-        cur = pd.Timestamp("2026-04-01") + pd.Timedelta(days=int(rng.integers(0, 120)))
+        # Recent (< 1 year before the snapshot) but early enough that later events
+        # (completion at cur+90, payments at cur+~50) stay on or before the snapshot —
+        # no synthetic case is future-dated. Stalled / late-completion use old dates.
+        cur = pd.Timestamp("2025-10-01") + pd.Timedelta(days=int(rng.integers(0, 60)))
         # ---- positives ----
         emit("Late sanction (>45 days)", True, amt, cur - pd.Timedelta(days=70), cur,
              payments=[(amt * 0.6, cur + pd.Timedelta(days=40))])
@@ -175,9 +176,16 @@ def generate(rng):
     # review pool and the budget is the binding constraint.
     for _ in range(ROUTINE_BG):
         amt = jitter(PEER_MEDIAN)
-        cur = pd.Timestamp("2026-04-01") + pd.Timedelta(days=int(rng.integers(0, 120)))
+        cur = pd.Timestamp("2025-10-01") + pd.Timedelta(days=int(rng.integers(0, 60)))
         emit("Routine work", False, amt, cur - pd.Timedelta(days=25), cur,
              payments=[(amt * 0.6, cur + pd.Timedelta(days=50))])
+
+    # Fail closed if any synthetic event is dated after the snapshot.
+    alld = ([r["RECOMMENDATION_DATE"] for r in rec_rows] + [r["SANCTION_DATE"] for r in san_rows]
+            + [r["ACTUAL_END_DATE"] for r in comp_rows] + [r["EXPENDITURE_DATE"] for r in pay_rows])
+    latest = pd.to_datetime(pd.Series(alld), format="%d-%b-%Y").max()
+    if latest > ref:
+        raise AssertionError(f"synthetic case is future-dated ({latest.date()} > snapshot {ref.date()})")
 
     def frame(rows):
         f = pd.DataFrame(rows)
@@ -226,14 +234,13 @@ def evaluate(work):
         out = {}
         for arm, col in (("a", "score_a"), ("b", "score_b")):
             sc = work[col].to_numpy()
-            sel = topk(sc, t, k)
-            selpos = sum(1 for i in sel if pos[i])
-            # False alerts = selected NEGATIVES that were actually flagged (score>0);
-            # zero-score fillers are not alerts the queue would force a review of.
-            flagged_neg = sum(1 for i in sel if (not pos[i]) and sc[i] > 0)
-            reviewed = selpos + flagged_neg
-            out[arm] = {"recovery": selpos / npos, "false_alerts": flagged_neg,
-                        "findings_per_review": (selpos / reviewed) if reviewed else 0.0, "selected": sel}
+            # The reviewed set is the top-k restricted to genuine alerts (score>0); zero-score
+            # fillers are not reviewed. Every metric uses this one denominator, consistently.
+            reviewed = {i for i in topk(sc, t, k) if sc[i] > 0}
+            rp = sum(1 for i in reviewed if pos[i])
+            out[arm] = {"recovery": rp / npos, "reviewed": len(reviewed), "findings": rp,
+                        "false_alerts": len(reviewed) - rp,
+                        "findings_per_review": (rp / len(reviewed)) if reviewed else 0.0, "selected": reviewed}
         scen = []
         for f in fams:
             idx = set(np.flatnonzero((work.family == f).to_numpy() & pos).tolist())
@@ -242,6 +249,7 @@ def evaluate(work):
         budgets.append({"fraction": frac, "k": k,
                         "a_recovery": out["a"]["recovery"], "b_recovery": out["b"]["recovery"],
                         "difference": out["b"]["recovery"] - out["a"]["recovery"],
+                        "a_reviewed": out["a"]["reviewed"], "b_reviewed": out["b"]["reviewed"],
                         "a_false_alerts": out["a"]["false_alerts"], "b_false_alerts": out["b"]["false_alerts"],
                         "a_findings_per_review": out["a"]["findings_per_review"], "b_findings_per_review": out["b"]["findings_per_review"],
                         "scenarios": scen})
@@ -257,8 +265,10 @@ def bootstrap(work, frac, rng, n_boot=1000):
         k = max(1, math.ceil(frac * len(s)))
         sub_pos = pos[s]; np_ = max(1, int(sub_pos.sum()))
         # rank within the resample
+        # recovery uses the same reviewed (score>0) set as evaluate(), for consistency
         order_a = s[np.lexsort((t[s], -a[s]))[:k]]; order_b = s[np.lexsort((t[s], -b[s]))[:k]]
-        diffs.append(pos[order_b].sum() / np_ - pos[order_a].sum() / np_)
+        ra = pos[order_a][a[order_a] > 0].sum(); rb = pos[order_b][b[order_b] > 0].sum()
+        diffs.append(rb / np_ - ra / np_)
     lo, hi = np.percentile(diffs, [2.5, 97.5])
     return float(lo), float(hi)
 
@@ -301,7 +311,7 @@ def build(local: Path):
             "No independently adjudicated fraud labels; synthetic labels are constructed review-worthy mechanisms, not real fraud.",
             "Legitimate-exception negatives (large scope, approved extension, revised sanction) are information-limited: some are irreducible false alerts with the supplied fields, and are reported as such.",
             "Recovery, findings-per-review and false-alert burden apply to the synthetic pool and its constructed low prevalence, not to national data; false alerts count genuinely flagged negatives, not zero-score fillers.",
-            "The real-data layer reports only queue overlap at equal budgets; no accuracy, false-positive-rate or money-saved claim is made on real rows.",
+            "The real-data layer reports only an UNWEIGHTED top-k set overlap (Jaccard) at equal budgets — every work counts equally regardless of amount — and makes no accuracy, false-positive-rate or money-saved claim on real rows.",
             "Evaluation families, seed, cutoff and peer anchors were frozen before scoring; production thresholds are used unchanged (no tuning on the test set).",
             "This is an offline screening-method comparison, not a prospective randomised trial with adjudicated outcomes.",
         ],
@@ -316,7 +326,7 @@ def build(local: Path):
     work[["work_id", "family", "positive", "score_a", "score_b", "priority_band", "reason_codes"]].to_csv(local / "ab_actual_scores.csv", index=False, encoding="utf-8-sig")
     lines = ["# Offline A/B validation — PS 26102 (real feature extraction)", "",
              f"Seed {SEED}; synthetic pool {n} works ({npos} positive); scored by the actual build pipeline and rule engine.", "",
-             "| Budget | A recovery | B recovery | B−A | 95% interval | B findings/review | B false alerts | Real queue overlap |",
+             "| Budget | A recovery | B recovery | B−A | 95% interval | B findings/review | B false alerts | Unweighted top-k overlap |",
              "|---|---:|---:|---:|---|---:|---:|---:|"]
     for bd in budgets:
         lines.append(f"| {bd['fraction']*100:.0f}% | {bd['a_recovery']*100:.1f}% | {bd['b_recovery']*100:.1f}% | {bd['difference']*100:.1f} pp | "

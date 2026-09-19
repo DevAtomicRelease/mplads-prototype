@@ -37,9 +37,9 @@ METRIC_WORDS = [
     ("completed", ["completed works", "works completed", "completed", "completions", "finished works"]),
     ("settled_pct", ["utilisation", "utilization", "settled ratio", "spend ratio", "paid ratio", "settled to sanction", "settled vs sanction", "settlement ratio"]),
     ("settled_paise", ["settled", "paid", "spent", "expenditure", "disbursed", "payment", "payments", "spending"]),
-    ("pending_paise", ["pending payment", "in progress", "in-progress"]),
+    ("pending_paise", ["pending payment", "pending", "in progress", "in-progress", "not settled", "unsettled"]),
     ("sanction_paise", ["sanction amount", "sanctioned amount", "sanctioned value", "funds sanctioned", "sanctioned funds", "sanction value"]),
-    ("cost_outliers", ["cost overrun", "cost overruns", "overrun", "overruns", "cost outlier", "cost outliers", "overpriced", "high cost", "expensive", "costliest"]),
+    ("cost_outliers", ["cost outlier", "cost outliers", "overpriced", "high cost", "high-cost", "expensive", "costliest", "high cost peer"]),
     ("duplicates", ["duplicate", "duplicates", "similar work", "similar works", "repeated work"]),
     ("mean_priority", ["average priority", "mean priority", "average risk", "risk score"]),
     ("sanctioned", ["sanctioned works", "number sanctioned"]),
@@ -220,23 +220,35 @@ def answer(db, question):
     order_alias = METRICS[metric][0]
 
     if dim == "vendor":
-        sql = f"SELECT vendor_name _dim, work_count works, successful_payment_paise settled_paise, mp_count, ida_count FROM Vendor_Features ORDER BY successful_payment_paise DESC LIMIT ?"
+        # Vendor_Features is a whole-extract profile with no state/cohort/FY columns, so
+        # entity filters cannot be honoured here — say so rather than dropping them silently.
+        vm = metric if metric in ("settled_paise", "pending_paise", "works") else "settled_paise"
+        vcol = {"settled_paise": "successful_payment_paise", "pending_paise": "pending_payment_paise", "works": "work_count"}[vm]
+        sql = f"SELECT vendor_name _dim, work_count works, successful_payment_paise settled_paise, pending_payment_paise pending_paise, mp_count, ida_count FROM Vendor_Features ORDER BY {vcol} DESC LIMIT ?"
         rows = [dict(r) for r in db.execute(sql, [intent["limit"]])]
-        cols = [{"key": "_dim", "label": "Vendor", "kind": "text"}, {"key": "works", "label": "Works", "kind": "count"}, {"key": "settled_paise", "label": "Settled", "kind": "money"}, {"key": "mp_count", "label": "MPs", "kind": "count"}, {"key": "ida_count", "label": "Authorities", "kind": "count"}]
-        interp = f"Top {intent['limit']} vendors by settled payments."
-        return _package(question, interp, cols, rows, sql, [intent["limit"]], "settled_paise", "money", DIMENSIONS["vendor"])
+        cols = [{"key": "_dim", "label": "Vendor", "kind": "text"}, {"key": "works", "label": "Works", "kind": "count"}, {"key": "settled_paise", "label": "Settled", "kind": "money"}, {"key": "pending_paise", "label": "In-progress", "kind": "money"}, {"key": "mp_count", "label": "MPs", "kind": "count"}, {"key": "ida_count", "label": "Authorities", "kind": "count"}]
+        note = " — note: state/cohort/year filters do not apply to the vendor extract" if intent["described"] else ""
+        interp = f"Top {intent['limit']} vendors by {METRICS[vm][1]}{note}."
+        return _package(question, interp, cols, rows, sql, [intent["limit"]], vm, METRICS[vm][2], DIMENSIONS["vendor"])
 
     if dim == "month":
-        sql = "SELECT payment_month _dim, SUM(successful_payment_paise) settled_paise, SUM(pending_payment_paise) pending_paise FROM Monthly_Payments GROUP BY payment_month ORDER BY payment_month"
-        rows = [dict(r) for r in db.execute(sql)]
+        # Monthly_Payments carries state, so a state filter is honoured; cohort/FY are not.
+        st = intent["filters"].get("state")
+        where_m = " WHERE state = ?" if st else ""
+        params_m = [st] if st else []
+        sql = f"SELECT payment_month _dim, SUM(successful_payment_paise) settled_paise, SUM(pending_payment_paise) pending_paise FROM Monthly_Payments{where_m} GROUP BY payment_month ORDER BY payment_month"
+        rows = [dict(r) for r in db.execute(sql, params_m)]
         cols = [{"key": "_dim", "label": "Month", "kind": "text"}, {"key": "settled_paise", "label": "Settled", "kind": "money"}, {"key": "pending_paise", "label": "In progress", "kind": "money"}]
-        return _package(question, "Monthly settled and in-progress payments.", cols, rows, sql, [], "settled_paise", "money", DIMENSIONS["month"])
+        unhonoured = [x for x in intent["described"] if not x.startswith("in ")]
+        note = (" — note: " + ", ".join(unhonoured) + " not applied") if unhonoured else ""
+        return _package(question, f"Monthly settled and in-progress payments{(' in ' + st) if st else ''}{note}.", cols, rows, sql, params_m, "settled_paise", "money", DIMENSIONS["month"])
 
     if intent["aggregate"]:
         sql = f"SELECT {WF_SELECT} FROM Work_Features{where}"
         row = dict(db.execute(sql, intent["params"]).fetchone())
         cols = _columns(None)
-        return _package(question, "National total" + ((" " + ", ".join(intent["described"])) if intent["described"] else ""), cols, [row], sql, intent["params"], order_alias, METRICS[metric][2], None, described=intent["described"], metric=metric)
+        aprefix = "" if intent["metric_found"] else "No specific metric recognised — showing works and totals. "
+        return _package(question, aprefix + "National total" + ((" " + ", ".join(intent["described"])) if intent["described"] else ""), cols, [row], sql, intent["params"], order_alias, METRICS[metric][2], None, described=intent["described"], metric=metric)
 
     gkey, disp = DIMENSIONS[dim][0], DIMENSIONS[dim][1]
     having = " HAVING COUNT(*) >= 20" if metric in ("settled_pct", "completion_rate", "mean_priority") else ""
@@ -248,7 +260,8 @@ def answer(db, question):
             r["_dim"] = labels.get(r["_dim"], r["_dim"])
     cols = _columns(dim)
     dirword = "highest" if intent["direction"] == "DESC" else "lowest"
-    interp = f"{DIMENSIONS[dim][3].title()} by {METRICS[metric][1]} ({dirword} first)" + ((", " + ", ".join(intent["described"])) if intent["described"] else "") + f", top {intent['limit']}."
+    prefix = "" if intent["metric_found"] else "No specific metric recognised — ranking by number of works (name a metric such as high-priority, delays, cost outliers, settled or pending amount, settled-to-sanction ratio). "
+    interp = prefix + f"{DIMENSIONS[dim][3].title()} by {METRICS[metric][1]} ({dirword} first)" + ((", " + ", ".join(intent["described"])) if intent["described"] else "") + f", top {intent['limit']}."
     return _package(question, interp, cols, rows, sql, [*intent["params"], intent["limit"]], order_alias, METRICS[metric][2], DIMENSIONS[dim], metric=metric)
 
 
