@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Search, Download, ChevronLeft, ChevronRight, ShieldCheck, ArrowUpRight, Building2, MapPin, TrendingUp, LayoutDashboard, ListFilter, Layers3, Copy, FlaskConical, Database, MessageSquareText, Users, CircleAlert, Sun, Moon, ClipboardCopy, Inbox } from 'lucide-react';
+import { Search, Download, ChevronLeft, ChevronRight, ShieldCheck, ArrowUpRight, Building2, MapPin, TrendingUp, LayoutDashboard, ListFilter, Layers3, Copy, FlaskConical, Database, MessageSquareText, Users, CircleAlert, Sun, Moon, ClipboardCopy, Inbox, Wrench } from 'lucide-react';
 import { Sidebar, SidebarProvider, SidebarInset, SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -21,7 +21,7 @@ const aliasState = (n: string) => (n.includes('dadra')||n.includes('daman'))?'da
 const stateKey = (s: string) => aliasState(normState(s));
 const signals: [string,string][] = [['','All signals'],['open_over_one_year_flag','Open beyond one year'],['no_payment_three_months_flag','No payment observed after 3 months'],['pending_recommendation_45d_flag','Pending recommendation >45 days'],['sanction_delay_45d_flag','Sanction delay proxy >45 days'],['repeat_payment_report_flag','Repeated payment-report rows'],['march_rush_flag','Year-end (March) disbursement concentration'],['high_cost_peer_flag','High historical peer amount'],['high_similarity_review_flag','Similar work descriptions'],['dbscan_outlier_flag','Unsupervised pattern outlier (DBSCAN)'],['paid_over_sanction_flag','Payments above sanction'],['completion_over_sanction_flag','Completion amount above sanction'],['completion_without_payment_flag','Completion without payment evidence'],['description_changed_flag','Description differs at completion'],['recommendation_missing_flag','Recommendation row missing']];
 
-const NAV: [string,string,any][] = [['overview','Overview',LayoutDashboard],['ask','Ask the data',MessageSquareText],['queue','Work investigation',ListFilter],['mp','MP view',Users],['entities','Entities',Layers3],['pairs','Similar works',Copy],['validation','A/B validation',FlaskConical],['sources','Data & research',Database]];
+const NAV: [string,string,any][] = [['overview','Overview',LayoutDashboard],['ask','Ask the data',MessageSquareText],['queue','Work investigation',ListFilter],['mp','MP view',Users],['entities','Entities',Layers3],['pairs','Similar works',Copy],['validation','A/B validation',FlaskConical],['sources','Data & research',Database],['status','Project status & tools',Wrench]];
 const HEAD: Record<string,[string,string]> = {
   overview:['A national-to-local view of the works that need a closer look.','MONITOR · INVESTIGATE · REVIEW'],
   ask:['Ask plain-English questions answered locally over the connected data.','LOCAL QUERY'],
@@ -31,6 +31,7 @@ const HEAD: Record<string,[string,string]> = {
   pairs:['Compare near-identical work descriptions within an authority and activity.','DUPLICATE REVIEW'],
   validation:['Equal-capacity baseline vs enhanced screening, offline.','EVALUATION'],
   sources:['Sources, feature dictionary, evidence limits and research.','PROVENANCE'],
+  status:['Dataset, verification, methodology, reproducibility, downloads and tools.','PROJECT STATUS & TOOLS'],
 };
 
 async function get<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -232,6 +233,73 @@ function Sources({meta}:{meta:Row}) {
   </>;
 }
 
+const JOB_TONE: Record<string,string> = {queued:'#647788', running:'#916710', completed:'#287c72', failed:'#ae494f'};
+function JobControl({name,title,job,onRun}:{name:string,title:string,job:Row|undefined,onRun:(n:string)=>void}) {
+  const busy=job&&['queued','running'].includes(job.state);
+  const when=job?.finished||job?.started||job?.created;
+  return <div className="job-row"><div className="job-main"><strong>{title}</strong>{job&&<small className="record-meta">{job.state}{job.exit_code!=null?` · exit ${job.exit_code}`:''}{when?` · ${new Date(when).toLocaleString()}`:''}{job.log?.length?` · ${job.log[job.log.length-1]}`:''}</small>}{busy?<div className="bar-track" style={{marginTop:8}}><i style={{width:`${Math.round((job.progress||0)*100)||8}%`}}/></div>:null}</div><div className="job-side">{job&&<span className="band" style={{background:'transparent',color:JOB_TONE[job.state]||'#647788'}}>● {job.state}</span>}<button onClick={()=>onRun(name)} disabled={!!busy}>{busy?'Running…':'Run'}</button></div></div>;
+}
+function StatusTools() {
+  const status=useData<Row>('/api/status');
+  const [rev,setRev]=useState(0);
+  const jobs=useData<Row>('/api/jobs',rev);
+  useEffect(()=>{const running=(jobs.data?.jobs||[]).some((j:Row)=>['queued','running'].includes(j.state));if(!running)return;const t=setInterval(()=>setRev(r=>r+1),2500);return()=>clearInterval(t)},[jobs.data]);
+  async function run(name:string){try{const r=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});await r.json().catch(()=>{});}catch{}setRev(r=>r+1);}
+  const s=status.data;
+  const latest:Record<string,Row>={};for(const j of (jobs.data?.jobs||[]))if(!latest[j.name])latest[j.name]=j;
+  const available:Row[]=jobs.data?.available||[];
+  const repro=s?.reproducibility;const testsJob=latest['tests'];
+  const dl=(file:string,label:string,ok:boolean)=>ok?<DownloadLink file={file}>{label}</DownloadLink>:<span className="quiet">{label} — not generated</span>;
+  return <><Status error={status.error} loading={!s} card/>{s&&<>
+    <div className="metric-grid">
+      <Metric label="Release version" value={<span style={{fontSize:15,wordBreak:'break-all'}}>{String(s.version).split(':')[0]}</span>} note={`as of ${s.as_of}`}/>
+      <Metric label="Cohorts" value={String((s.cohorts||[]).length)} note={(s.cohorts||[]).map((c:string)=>COHORT_LABEL[c]||c).join(', ')}/>
+      <Metric label="Reconciliation" value={s.all_checks_passed?'21 / 21 passed':'FAILED'} note={s.all_checks_passed?'build gate green':'do not use'}/>
+      <Metric label="Source verification" value={s.source_fresh?'Verified':'STALE'} note={s.source_fresh?'hashes match the build':s.stale_reason}/>
+    </div>
+
+    <div className="panel"><div className="panel-head"><div><h2>Dataset inventory & source verification</h2><p>Immutable source files, per cohort, with accepted vs quarantined records and content hashes.</p></div></div><div style={{overflowX:'auto'}}><Table><TableHeader><TableRow>{['Cohort','File','Records','Accepted','Quarantined','SHA-256'].map(h=><TableHead key={h}>{h}</TableHead>)}</TableRow></TableHeader><TableBody>{(s.sources||[]).map((r:Row,i:number)=><TableRow key={i}><TableCell>{r.cohort}</TableCell><TableCell className="record-title">{r.file}</TableCell><TableCell>{count(r.rows)}</TableCell><TableCell>{count(r.accepted)}</TableCell><TableCell>{r.quarantined}</TableCell><TableCell><small className="record-meta" style={{wordBreak:'break-all'}}>{String(r.sha256).slice(0,16)}…</small></TableCell></TableRow>)}</TableBody></Table></div><p className="section-note">{s.scope}</p></div>
+
+    <div className="overview-grid">
+      <div className="panel"><div className="panel-head"><div><h2>Financial & lifecycle summary</h2></div></div><dl className="s6-facts" style={{padding:'4px 24px 18px'}}>{[['Works',count(s.totals.works)],['Sanctioned',crore(s.totals.sanction_paise)],['Settled (reported)',crore(s.totals.successful_payment_paise)],['In-progress (excluded)',crore(s.totals.pending_payment_paise)],['Reported complete',count(s.totals.completions)],['Priority bands',Object.entries(s.priority_counts||{}).map(([k,v])=>`${k} ${v}`).join(' · ')]].map(([l,v])=><div key={String(l)}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></div>
+      <div className="panel"><div className="panel-head"><div><h2>Reproducibility & tests</h2><p>Tied to this exact release version.</p></div></div><dl className="s6-facts" style={{padding:'4px 24px 8px'}}>
+        <div><dt>Reproducibility</dt><dd>{repro?(repro.reproducible?`Byte-identical (${Object.keys(repro.artifacts||{}).length} artifacts)`:'MISMATCH'):'Not run — use “Run” below'}</dd></div>
+        <div><dt>Checked</dt><dd>{repro?.generated?new Date(repro.generated).toLocaleString():'—'}</dd></div>
+        <div><dt>Tests</dt><dd>{testsJob?(testsJob.state==='completed'?'Passed':testsJob.state==='failed'?'Failed':testsJob.state):'Not run this session'}</dd></div>
+      </dl><p className="section-note">Reproducibility rebuilds into a separate release directory and compares hashes; it does not touch the running data.</p></div>
+    </div>
+
+    <div className="panel"><div className="panel-head"><div><h2>Tools — run checks & prepare outputs</h2><p>These start a background job on this machine (compute), distinct from viewing existing results. One job of each kind runs at a time.</p></div></div><div style={{padding:'4px 20px 16px'}}>{available.map((a:Row)=><JobControl key={a.name} name={a.name} title={a.title} job={latest[a.name]} onRun={run}/>)}</div><Status error={jobs.error} loading={false}/></div>
+
+    <div className="panel"><div className="panel-head"><div><h2>Downloads — datasets, reports & evidence</h2></div></div><div style={{display:'flex',flexWrap:'wrap',gap:'12px 22px',padding:'8px 24px 20px'}}>
+      {dl('MPLADS_Review.xlsx','Excel review workbook',s.artifacts.workbook.available)}
+      {dl('Work_Features.csv','Work features (CSV)',true)}
+      {dl('Payment_Features.csv','Payments (CSV)',true)}
+      {dl('Duplicate_Candidates.csv','Duplicate candidates (CSV)',true)}
+      {dl('Feature_Dictionary.csv','Feature dictionary (CSV)',true)}
+      {dl('Quarantine.csv','Quarantined record (CSV)',s.artifacts.quarantine.available)}
+      {dl('audit.json','Audit & source hashes',s.artifacts.audit.available)}
+      {dl('AB_Report.md','A/B methods & results',s.artifacts.ab_metrics.available)}
+      {dl('ab_controlled_benchmark.csv','A/B per-family (CSV)',s.artifacts.ab_metrics.available)}
+      {dl('ab_actual_scores.csv','A/B synthetic scored cases',s.artifacts.ab_metrics.available)}
+      {dl('reproducibility.json','Reproducibility manifest',s.artifacts.reproducibility.available)}
+    </div></div>
+
+    <div className="panel"><div className="panel-head"><div><h2>Methodology & evidence limits</h2></div></div><div style={{padding:'4px 24px 20px'}}>
+      <h3 style={{marginTop:8}}>Rule registry (disclosed weights)</h3><div style={{overflowX:'auto'}}><Table><TableHeader><TableRow>{['Screen','Weight','Reason','Required caution'].map(h=><TableHead key={h}>{h}</TableHead>)}</TableRow></TableHeader><TableBody>{(s.rules||[]).map((r:Row)=><TableRow key={r.field}><TableCell className="record-title">{r.field}</TableCell><TableCell>{r.weight}</TableCell><TableCell>{r.reason}</TableCell><TableCell className="quiet">{r.caution}</TableCell></TableRow>)}</TableBody></Table></div>
+      <h3>Evidence limits</h3><ul className="quiet" style={{paddingLeft:20}}>{(s.limits||[]).map((l:string)=><li key={l} style={{margin:'6px 0'}}>{l}</li>)}</ul>
+      <h3>Research used in the design</h3>{(s.research||[]).map((r:Row)=><p key={r.id} className="quiet" style={{margin:'8px 0'}}><a className="text-link" href={r.url} target="_blank" rel="noreferrer">{r.title}</a> · {r.date}<br/>{r.use}</p>)}
+    </div></div>
+
+    <div className="panel"><div className="panel-head"><div><h2>Help — investigate a work & record a review</h2></div></div><div className="quiet" style={{padding:'4px 24px 22px',lineHeight:1.7}}>
+      <p><strong>Find works:</strong> open <em>Work investigation</em>, filter by state, financial year, lifecycle or an investigation <em>signal</em> (e.g. open beyond one year, cost outlier), or type in the search box.</p>
+      <p><strong>Inspect evidence:</strong> click a work to open its evidence drawer — lifecycle dates, a financial reconciliation, the <em>reason codes</em> that put it in the queue (each with a required caution), the historical cost comparison, the payment ledger and any similar-work candidates.</p>
+      <p><strong>Record a review:</strong> in the drawer, choose a disposition (Needs evidence · Expected variation · Data issue · Substantiated issue), write an evidence note, and save. Reviews are stored locally on this computer, tied to this dataset version, and are preserved across rebuilds — they are never uploaded.</p>
+      <p><strong>Remember:</strong> no score here is a finding of fraud. Every alert is a request for evidence and human review; unavailable checks are shown as unavailable, not passed.</p>
+    </div></div>
+    </>}</>;
+}
+
 function App() {
   const meta=useData<Row>('/api/meta');const [view,setView]=useState('overview');const [selected,setSelected]=useState<string|null>(null);const [entity,setEntity]=useState<Row>({});
   const [theme,setTheme]=useState<'light'|'dark'>(()=>{try{return (localStorage.getItem('mplads-theme') as 'light'|'dark')||'light'}catch{return 'light'}});
@@ -250,7 +318,7 @@ function App() {
       <header className="topbar"><div><SidebarTrigger/><span className="crumb">MPLADS / <strong>{label}</strong></span></div><div style={{display:'flex',gap:12,alignItems:'center'}}><span className="environment-pill"><span/>Local processing · review signals, not findings of fraud</span><button className="theme-toggle" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} aria-label={`Switch to ${theme==='dark'?'light':'dark'} mode`}>{theme==='dark'?<Sun size={15}/>:<Moon size={15}/>}<span>{theme==='dark'?'Light':'Dark'}</span></button></div></header>
       <main className="main-content">
         <div className="page-heading"><div><p className="eyebrow">{eyebrow}</p><h1>{label}</h1><p className="page-description">{desc}</p></div>{view==='overview'&&meta.data&&<DownloadLink file="audit.json">National audit</DownloadLink>}</div>
-        <Status error={meta.error} loading={!meta.data}/>{meta.data&&<>
+        {meta.error?<div className="s6-empty"><CircleAlert size={26}/><span><strong>The local backend is not responding.</strong></span><span className="quiet">Start it with the launcher — run <code>run.ps1</code> (or double-click <code>START.cmd</code>) in the project folder, then reload this page. This page cannot start the backend for you.</span></div>:!meta.data?<div role="status"><Skeleton card/></div>:null}{meta.data&&<>
           {view==='overview'&&<Overview inspect={inspect}/>}
           {view==='ask'&&<Ask inspect={inspect}/>}
           {view==='queue'&&<Queue open={setSelected} entity={entity} clearEntity={()=>setEntity({})}/>}
@@ -259,6 +327,7 @@ function App() {
           {view==='pairs'&&<Pairs open={setSelected}/>}
           {view==='validation'&&<Validation/>}
           {view==='sources'&&<Sources meta={meta.data}/>}
+          {view==='status'&&<StatusTools/>}
         </>}
         <footer className="workspace-footer"><div>Local research prototype · no officer authentication or audit certification.</div><a className="text-link" href="/api/reviews" target="_blank" rel="noreferrer">Export local review history</a></footer>
       </main>

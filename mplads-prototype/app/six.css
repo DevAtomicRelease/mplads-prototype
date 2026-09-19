@@ -66,3 +66,8 @@
 [data-theme="dark"] .s6-reasons li{background:#16212d}[data-theme="dark"] .s6-review{background:#16212d}
 [data-theme="dark"] .workspace-footer{border-top-color:#243240;color:#8092a3}
 [data-theme="dark"] .theme-toggle{background:#16212d;border-color:#33475a;color:#bcd0e0}
+
+/* ---- project status & tools: job controls ---- */
+.job-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid #edf1f4}
+.job-row:first-child{border-top:0}.job-main{flex:1;min-width:0}.job-main strong{font-size:14px;font-weight:550}.job-side{display:flex;align-items:center;gap:12px;white-space:nowrap}
+[data-theme="dark"] .job-row{border-top-color:#243240}
