@@ -100,3 +100,6 @@ archive/outputs/
 
 # Local versioned releases (built by prepare_release.py)
 six_source/releases/
+
+# Presentation build scratch (keep only the final decks in PPT/output)
+PPT/.sih-build*/
