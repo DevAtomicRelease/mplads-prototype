@@ -103,3 +103,6 @@ six_source/releases/
 
 # Presentation build scratch (keep only the final decks in PPT/output)
 PPT/.sih-build*/
+
+# Presentation decks are excluded pending a single corrected deck (contact info + architecture review)
+PPT/
