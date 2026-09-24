@@ -118,6 +118,52 @@ class NLQuery(unittest.TestCase):
         self.assertEqual(nlq.answer(self.db, q)["sql"], nlq.answer(self.db, q)["sql"])
 
 
+class NLParsing(unittest.TestCase):
+    """Each supported question maps to the intended metric / dimension / direction / filter."""
+    @classmethod
+    def setUpClass(cls):
+        if not (LOCAL / "mplads.sqlite3").is_file():
+            raise unittest.SkipTest("Run build.py first")
+        cls.states = [r[0] for r in db().execute("SELECT DISTINCT state FROM Work_Features")]
+
+    def parse(self, q):
+        return nlq.parse(q, self.states)
+
+    def test_pending_not_settled(self):
+        i = self.parse("Top states by pending payments")
+        self.assertEqual(i["metric"], "pending_paise"); self.assertEqual(i["dimension"], "state"); self.assertEqual(i["direction"], "DESC")
+
+    def test_settled_metric(self):
+        self.assertEqual(self.parse("states with the most settled payments")["metric"], "settled_paise")
+
+    def test_overpaid_maps_to_paid_over(self):
+        self.assertEqual(self.parse("which states have most overpaid works")["metric"], "paid_over")
+
+    def test_completion_over(self):
+        self.assertEqual(self.parse("districts by completion above sanction")["metric"], "completion_over")
+
+    def test_cost_outlier_not_overrun(self):
+        # "cost overrun" must NOT be treated as the peer cost-outlier metric
+        self.assertFalse(self.parse("cost overruns by district")["metric_found"])
+        self.assertEqual(self.parse("which activities have the most cost outliers")["metric"], "cost_outliers")
+
+    def test_direction_and_limit(self):
+        i = self.parse("bottom 5 states by settled-to-sanction ratio")
+        self.assertEqual(i["metric"], "settled_pct"); self.assertEqual(i["direction"], "ASC"); self.assertEqual(i["limit"], 5)
+
+    def test_state_filter_and_drill(self):
+        i = self.parse("which districts in Bihar have the most delays")
+        self.assertEqual(i["dimension"], "ida"); self.assertEqual(i["filters"].get("state"), "Bihar"); self.assertEqual(i["metric"], "open_over_year")
+
+    def test_vendor_filter_refused(self):
+        r = nlq.answer(db(), "bottom five vendors by paid amount in Bihar")
+        self.assertEqual(r["columns"], []); self.assertIn("cannot be filtered", r["summary"].lower())
+
+    def test_loaded_refused(self):
+        r = nlq.answer(db(), "who is the most corrupt MP")
+        self.assertEqual(r["columns"], []); self.assertIn("fraud", r["summary"].lower())
+
+
 class Validation(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

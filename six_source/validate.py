@@ -63,6 +63,9 @@ FAMILIES = [
     ("Distinct phase / continuation", False),
     ("Minor March share", False),
     ("Legitimately late completion", False),
+    ("Approved extension (extension unavailable)", False),
+    ("Legitimate larger scope (scope unavailable)", False),
+    ("Revised sanction (revision unavailable)", False),
 ]
 
 
@@ -122,7 +125,7 @@ def generate(rng):
     def jitter(base, frac=0.1):
         return max(50000.0, float(base * (1 + rng.normal(0, frac))))
 
-    for _ in range(INSTANCES):
+    for pi in range(INSTANCES):
         amt = jitter(PEER_MEDIAN)
         # Recent (< 1 year before the snapshot) but early enough that later events
         # (completion at cur+90, payments at cur+~50) stay on or before the snapshot —
@@ -148,9 +151,12 @@ def generate(rng):
              payments=[(amt * 0.8, pd.Timestamp("2026-03-20"))])
         emit("Inflated cost vs peers (B only)", True, PEER_MEDIAN * 10, cur - pd.Timedelta(days=20), cur,
              payments=[(PEER_MEDIAN * 6, cur + pd.Timedelta(days=40))])
-        shared = "Construction of concrete road at test ward number seven near market"
-        a = emit("Near-duplicate description (B only)", True, amt, cur - pd.Timedelta(days=20), cur, desc=shared,
-                 payments=[(amt * 0.6, cur + pd.Timedelta(days=40))])
+        # Each pair gets its own rare token ("blockword") so the two works anchor to each
+        # other (not lost among the routine background), identical text and equal amount.
+        blockword = f"pilotblock{pi:03d}"
+        shared = f"Construction of concrete cross drainage culvert at {blockword} beside panchayat depot"
+        emit("Near-duplicate description (B only)", True, amt, cur - pd.Timedelta(days=20), cur, desc=shared,
+             payments=[(amt * 0.6, cur + pd.Timedelta(days=40))])
         emit("Near-duplicate description (B only)", True, amt, cur - pd.Timedelta(days=18), cur, desc=shared,
              payments=[(amt * 0.6, cur + pd.Timedelta(days=42))])
         # ---- negatives ----
@@ -171,6 +177,17 @@ def generate(rng):
         emit("Legitimately late completion", False, amt, lc - pd.Timedelta(days=20), lc,
              completed=pd.Timestamp("2026-07-01"), comp_amount=amt,
              payments=[(amt * 0.9, pd.Timestamp("2026-06-20"))])
+        # ---- difficult, INFORMATION-LIMITED negatives: the exonerating fact (extension,
+        # legitimate scope, revised sanction) is not in the supplied fields, so a screen
+        # fires anyway. These are honest, largely irreducible false alerts with this data.
+        old2 = pd.Timestamp("2024-08-01") + pd.Timedelta(days=int(rng.integers(0, 60)))
+        emit("Approved extension (extension unavailable)", False, amt, old2 - pd.Timedelta(days=20), old2,
+             payments=[(amt * 0.5, old2 + pd.Timedelta(days=30))])
+        emit("Legitimate larger scope (scope unavailable)", False, PEER_MEDIAN * 10, cur - pd.Timedelta(days=20), cur,
+             payments=[(PEER_MEDIAN * 6, cur + pd.Timedelta(days=40))])
+        emit("Revised sanction (revision unavailable)", False, amt, cur - pd.Timedelta(days=20), cur,
+             completed=cur + pd.Timedelta(days=90), comp_amount=amt * 1.4,
+             payments=[(amt * 0.9, cur + pd.Timedelta(days=50))])
 
     # Large routine-negative background so positives are a realistic low share of the
     # review pool and the budget is the binding constraint.
@@ -274,20 +291,39 @@ def bootstrap(work, frac, rng, n_boot=1000):
 
 
 def real_overlap(local):
+    # Uses the PRODUCTION WEIGHTED ranking: B = the actual priority_score; A = the same
+    # disclosed rule weights restricted to the baseline screens (summed from
+    # Rule_Contributions and capped at 100, exactly as the engine caps priority_score).
     db = sqlite3.connect((local / "mplads.sqlite3").resolve().as_uri() + "?mode=ro", uri=True)
-    shared = ["pending_recommendation_45d_flag", "sanction_delay_45d_flag", "open_over_one_year_flag",
-              "no_payment_three_months_flag", "paid_over_sanction_flag", "completion_over_sanction_flag", "repeat_payment_report_flag"]
-    extra = ["march_rush_flag", "high_cost_peer_flag", "high_similarity_review_flag"]
-    rows = list(db.execute(f"SELECT work_id,{','.join(shared+extra)} FROM Work_Features"))
+    b_score = {r[0]: r[1] for r in db.execute("SELECT work_id, priority_score FROM Work_Features")}
+    a_raw = {r[0]: r[1] for r in db.execute(
+        f"SELECT work_id, SUM(points) FROM Rule_Contributions WHERE rule IN ({','.join('?' * len(BASELINE))}) GROUP BY work_id",
+        list(BASELINE))}
     db.close()
-    ids = [r[0] for r in rows]
-    a = np.array([sum(r[1 + i] for i in range(len(shared))) for r in rows], float)
-    b = a + np.array([sum(r[1 + len(shared) + i] for i in range(len(extra))) for r in rows], float)
+    ids = list(b_score)
+    b = np.array([b_score[i] for i in ids], float)
+    a = np.array([min(100, a_raw.get(i, 0)) for i in ids], float)
     t = tie(ids); out = {}
     for frac in BUDGETS:
-        k = math.ceil(frac * len(rows)); sa, sb = topk(a, t, k), topk(b, t, k)
+        k = math.ceil(frac * len(ids)); sa, sb = topk(a, t, k), topk(b, t, k)
         out[frac] = (len(sa & sb) / len(sa | sb)) if (sa | sb) else 0.0
     return out
+
+
+def ml_eval(work):
+    # Separate, descriptive evaluation of the unsupervised models on the synthetic set —
+    # these are NOT the methods the A/B compares. Recovery of positives by Isolation Forest
+    # ranking, and precision/recall of the DBSCAN outlier flag.
+    pos = work.positive.to_numpy(bool); ids = work.work_id.tolist(); t = tie(ids)
+    n, npos = len(work), max(1, int(pos.sum()))
+    iso = work.isolation_percentile.to_numpy(float)
+    isolation = [{"fraction": f, "recovery": sum(1 for i in topk(iso, t, math.ceil(f * n)) if pos[i]) / npos} for f in BUDGETS]
+    dbf = work.dbscan_outlier_flag.astype(bool).to_numpy()
+    flagged = int(dbf.sum()); tp = int((dbf & pos).sum())
+    return {"note": "Descriptive only; the unsupervised models are not the A/B arms and are not calibrated fraud detectors.",
+            "isolation_forest_recovery": isolation,
+            "dbscan": {"flagged": flagged, "positives_flagged": tp,
+                       "precision": tp / max(1, flagged), "recall": tp / npos}}
 
 
 def build(local: Path):
@@ -295,11 +331,12 @@ def build(local: Path):
     budgets, n, npos = evaluate(work)
     rng = np.random.default_rng(SEED + 1)
     overlap = real_overlap(local)
+    ml = ml_eval(work)
     for b in budgets:
         b["ci95"] = list(bootstrap(work, b["fraction"], rng))
         b["actual_queue_overlap"] = overlap[b["fraction"]]
     metrics = {
-        "version": "six-source-ab-real-v2", "seed": SEED, "synthetic_pool": n, "synthetic_positives": npos,
+        "version": "six-source-ab-real-v3", "seed": SEED, "synthetic_pool": n, "synthetic_positives": npos, "ml": ml,
         "design": ("Synthetic source-shaped rows (a prior-year peer background plus labelled positive mechanisms, "
                    "legitimate-exception and difficult negatives) are run through the actual build feature pipeline "
                    "and scored by the actual rule engine. Baseline A uses the operational/payment screens; enhanced B "

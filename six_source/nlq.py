@@ -22,9 +22,11 @@ METRICS = {
     "sanctioned": ("sanctioned", "sanctioned works", "count", None),
     "cost_outliers": ("cost_outliers", "high-cost-peer works", "count", False),
     "duplicates": ("duplicates", "similar-work flags", "count", False),
+    "paid_over": ("paid_over", "works with payments over sanction", "count", False),
+    "completion_over": ("completion_over", "works with completion amount over sanction", "count", False),
     "sanction_paise": ("sanction_paise", "sanctioned amount", "money", None),
     "settled_paise": ("settled_paise", "settled (reported) payments", "money", None),
-    "pending_paise": ("pending_paise", "in-progress payments", "money", None),
+    "pending_paise": ("pending_paise", "in-progress (pending) payments", "money", None),
     "settled_pct": ("settled_pct", "settled-to-sanction ratio", "pct", True),
     "completion_rate": ("completion_rate", "reported completion rate (export membership)", "pct", True),
     "mean_priority": ("mean_priority", "mean review priority", "num", False),
@@ -35,9 +37,11 @@ METRIC_WORDS = [
     ("no_payment_3m", ["no payment", "unpaid", "without payment", "no observed payment"]),
     ("completion_rate", ["completion rate", "completed ratio", "percent completed", "completion percentage"]),
     ("completed", ["completed works", "works completed", "completed", "completions", "finished works"]),
+    ("paid_over", ["overpaid", "paid over sanction", "payment over sanction", "payment above sanction", "payments above sanction", "paid above sanction", "over-sanction payment"]),
+    ("completion_over", ["completion above sanction", "completion over sanction", "completed above sanction", "completion overrun"]),
     ("settled_pct", ["utilisation", "utilization", "settled ratio", "spend ratio", "paid ratio", "settled to sanction", "settled vs sanction", "settlement ratio"]),
+    ("pending_paise", ["pending payment", "pending payments", "pending", "in progress", "in-progress", "not settled", "unsettled"]),
     ("settled_paise", ["settled", "paid", "spent", "expenditure", "disbursed", "payment", "payments", "spending"]),
-    ("pending_paise", ["pending payment", "pending", "in progress", "in-progress", "not settled", "unsettled"]),
     ("sanction_paise", ["sanction amount", "sanctioned amount", "sanctioned value", "funds sanctioned", "sanctioned funds", "sanction value"]),
     ("cost_outliers", ["cost outlier", "cost outliers", "overpriced", "high cost", "high-cost", "expensive", "costliest", "high cost peer"]),
     ("duplicates", ["duplicate", "duplicates", "similar work", "similar works", "repeated work"]),
@@ -101,6 +105,8 @@ WF_SELECT = (
     "SUM(in_sanctioned) sanctioned, "
     "SUM(high_cost_peer_flag) cost_outliers, "
     "SUM(high_similarity_review_flag) duplicates, "
+    "SUM(paid_over_sanction_flag) paid_over, "
+    "SUM(completion_over_sanction_flag) completion_over, "
     "SUM(sanction_amount_paise) sanction_paise, "
     "SUM(successful_payment_paise) settled_paise, "
     "SUM(pending_payment_paise) pending_paise, "
@@ -220,15 +226,17 @@ def answer(db, question):
     order_alias = METRICS[metric][0]
 
     if dim == "vendor":
-        # Vendor_Features is a whole-extract profile with no state/cohort/FY columns, so
-        # entity filters cannot be honoured here — say so rather than dropping them silently.
+        # Vendor_Features is a whole-extract profile with no state/cohort/FY columns.
+        # Rather than silently ignore a filter the user asked for, refuse and explain.
+        if intent["described"]:
+            return _clarify(question, "Vendors cannot be filtered by state, cohort or financial year here — the vendor profile is over the whole extract. Ask e.g. \"top vendors by settled payments\" (unfiltered), or use the Work investigation queue filtered by state and open a work to see its vendor.")
         vm = metric if metric in ("settled_paise", "pending_paise", "works") else "settled_paise"
         vcol = {"settled_paise": "successful_payment_paise", "pending_paise": "pending_payment_paise", "works": "work_count"}[vm]
-        sql = f"SELECT vendor_name _dim, work_count works, successful_payment_paise settled_paise, pending_payment_paise pending_paise, mp_count, ida_count FROM Vendor_Features ORDER BY {vcol} DESC LIMIT ?"
+        sql = f"SELECT vendor_name _dim, work_count works, successful_payment_paise settled_paise, pending_payment_paise pending_paise, mp_count, ida_count FROM Vendor_Features ORDER BY {vcol} {intent['direction']} LIMIT ?"
         rows = [dict(r) for r in db.execute(sql, [intent["limit"]])]
         cols = [{"key": "_dim", "label": "Vendor", "kind": "text"}, {"key": "works", "label": "Works", "kind": "count"}, {"key": "settled_paise", "label": "Settled", "kind": "money"}, {"key": "pending_paise", "label": "In-progress", "kind": "money"}, {"key": "mp_count", "label": "MPs", "kind": "count"}, {"key": "ida_count", "label": "Authorities", "kind": "count"}]
-        note = " — note: state/cohort/year filters do not apply to the vendor extract" if intent["described"] else ""
-        interp = f"Top {intent['limit']} vendors by {METRICS[vm][1]}{note}."
+        dirword = "highest" if intent["direction"] == "DESC" else "lowest"
+        interp = f"Vendors by {METRICS[vm][1]} ({dirword} first), top {intent['limit']}."
         return _package(question, interp, cols, rows, sql, [intent["limit"]], vm, METRICS[vm][2], DIMENSIONS["vendor"])
 
     if dim == "month":
