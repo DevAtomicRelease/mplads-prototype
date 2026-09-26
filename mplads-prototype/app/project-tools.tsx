@@ -68,7 +68,7 @@ const crore = (n: number) =>
   `₹${(n / 1e9).toLocaleString('en-IN', { maximumFractionDigits: 2 })} cr`;
 const pct = (n: number) => (n * 100).toFixed(1) + '%';
 const method = (m: string) =>
-  m === 'last_month' ? 'Last month (baseline)' : 'Trailing three-month mean';
+  m === 'last_month' ? 'Same as last month' : 'Average of last 3 months';
 function useLocal<T>(url: string, revision = 0) {
   const [result, setResult] = useState<{
     url: string;
@@ -160,12 +160,13 @@ export function ReviewForm({
   return (
     <div>
       <p className="quiet">
-        Append-only local history. Assignment names are not authenticated
-        identities. Closed means reviewed, not proven issue-free.
+        Every save is added to the history; nothing is overwritten. Names
+        typed here are not checked log-ins. “Closed” means reviewed — not
+        proven problem-free.
       </p>
       <div className="global-filters">
         <label>
-          Owner
+          Assigned to
           <input
             className="s6-input"
             maxLength={120}
@@ -185,7 +186,7 @@ export function ReviewForm({
           />
         </label>
         <label>
-          Case status
+          Status
           <select
             className="s6-input"
             value={status}
@@ -197,7 +198,7 @@ export function ReviewForm({
           </select>
         </label>
         <label>
-          Disposition
+          Outcome
           <select
             className="s6-input"
             value={outcome}
@@ -215,16 +216,16 @@ export function ReviewForm({
         </label>
       </div>
       <label className="s6-note-input">
-        Evidence or next action
+        What you checked, or what is still needed
         <textarea
           value={note}
           maxLength={3000}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Reference the document checked, finding or evidence still needed."
+          placeholder="e.g. Checked sanction letter and site photos; completion certificate still missing."
         />
       </label>
       <button disabled={busy || !note.trim()} onClick={() => void save()}>
-        {busy ? 'Saving…' : 'Save review locally'}
+        {busy ? 'Saving…' : 'Save review'}
       </button>
       <output aria-live="polite">{message}</output>
     </div>
@@ -253,9 +254,10 @@ export function CaseRegister({ open }: { open: (id: string) => void }) {
         <div>
           <h2>Review register</h2>
           <p>
-            Latest decision per record, including earlier releases. Open a work
-            to check current evidence before updating it. Follow-up dates are
-            local task dates, not scheme deadlines.
+            The latest review of each work, including reviews saved on older
+            data versions. Open a work to check the current evidence before
+            updating it. Follow-up dates are your own reminders, not official
+            scheme deadlines.
           </p>
         </div>
         <button onClick={() => setRevision((r) => r + 1)}>
@@ -264,7 +266,7 @@ export function CaseRegister({ open }: { open: (id: string) => void }) {
       </div>
       <div className="global-filters">
         <label>
-          Case status
+          Status
           <select
             className="s6-input"
             value={state}
@@ -280,7 +282,7 @@ export function CaseRegister({ open }: { open: (id: string) => void }) {
           </select>
         </label>
         <label>
-          Find owner, work or note
+          Search by person, work or note
           <input
             className="s6-input"
             value={query}
@@ -295,7 +297,7 @@ export function CaseRegister({ open }: { open: (id: string) => void }) {
           href="/api/reviews"
           download="review-history.json"
         >
-          Export complete history
+          Download full history
         </a>
       </div>
       {data.error && <p role="alert">{data.error}</p>}
@@ -306,11 +308,11 @@ export function CaseRegister({ open }: { open: (id: string) => void }) {
             <TableRow>
               {[
                 'Work',
-                'Owner',
-                'Status / disposition',
-                'Due',
-                'Latest evidence',
-                'Release',
+                'Assigned to',
+                'Status / outcome',
+                'Follow up by',
+                'Latest note',
+                'Data version',
               ].map((h) => (
                 <TableHead key={h}>{h}</TableHead>
               ))}
@@ -348,7 +350,7 @@ export function CaseRegister({ open }: { open: (id: string) => void }) {
                 <TableCell>
                   {r.version === data.data?.version
                     ? 'Current'
-                    : 'Previous — recheck'}
+                    : 'Older — check again'}
                 </TableCell>
               </TableRow>
             ))}
@@ -358,8 +360,8 @@ export function CaseRegister({ open }: { open: (id: string) => void }) {
       <Page offset={offset} total={rows.length} change={setOffset} />
       {data.data && !rows.length && (
         <p className="section-note">
-          No matching reviews. Open a work from Work investigation, then save an
-          evidence note.
+          No reviews found. Open a work from Work investigation, then save a
+          review there.
         </p>
       )}
     </div>
@@ -384,14 +386,15 @@ export function Insights({
       <div className="panel">
         <div className="panel-head">
           <div>
-            <h2>Experimental payment forecast</h2>
+            <h2>Payment forecast (experimental)</h2>
             <p>
-              One-month projection of reported settlement totals. No fraud or
-              project-completion prediction.
+              A simple estimate of how much will be reported as paid next
+              month, for all works together. It does not predict fraud or when
+              works will be finished.
             </p>
           </div>
           <a className="text-link" href="/api/download/forecast.json" download>
-            Forecast & backtest
+            Download forecast data
           </a>
         </div>
         {forecast.error && <p role="alert">{forecast.error}</p>}
@@ -401,32 +404,38 @@ export function Insights({
           <>
             <div className="metric-grid">
               <div className="metric">
-                <span>Projected full month: {f.forecast_month}</span>
+                <span>Expected total for {f.forecast_month}</span>
                 <strong>{crore(f.forecast_paise)}</strong>
-                <span>Not remaining-month expenditure</span>
+                <span>For the whole month, not only the days left</span>
               </div>
               <div className="metric">
-                <span>Selected on validation months</span>
+                <span>Method chosen (on past months)</span>
                 <strong style={{ fontSize: 19 }}>
                   {method(f.selected_method)}
                 </strong>
                 <span>
                   {f.test_improved_over_last_month
-                    ? 'Lower error than baseline on the three test months'
-                    : 'No demonstrated test improvement over last-month baseline'}
+                    ? 'More accurate than “same as last month” in the 3 test months'
+                    : 'Not more accurate than “same as last month” in the 3 test months'}
                 </span>
               </div>
             </div>
-            <p className="section-note">{f.methodology}</p>
+            <p className="section-note">
+              How it works: we tried two simple methods — “same as last month”
+              and “average of the last three months” — on past months, and kept
+              the one with smaller errors. We then tested it on the three most
+              recent complete months, predicting each month using only the
+              months before it.
+            </p>
             <div style={{ height: 260, padding: 20 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
                   data={f.folds.slice(-12).map((r) => ({
                     month: r.month,
-                    Observed: r.actual_paise / 1e9,
-                    Baseline: r.last_month / 1e9,
-                    'Three-month mean': r.trailing_three_month_mean / 1e9,
+                    Actual: r.actual_paise / 1e9,
+                    'Same as last month': r.last_month / 1e9,
+                    'Average of last 3 months': r.trailing_three_month_mean / 1e9,
                   }))}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
@@ -439,7 +448,7 @@ export function Insights({
                     width={60}
                     tick={{ fontSize: 11 }}
                     label={{
-                      value: 'INR crore',
+                      value: '₹ crore',
                       angle: -90,
                       position: 'insideLeft',
                     }}
@@ -450,15 +459,15 @@ export function Insights({
                     }
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line dataKey="Observed" stroke="#277780" dot={false} />
+                  <Line dataKey="Actual" stroke="#277780" dot={false} />
                   <Line
-                    dataKey="Baseline"
+                    dataKey="Same as last month"
                     stroke="#9a6427"
                     strokeDasharray="5 4"
                     dot={false}
                   />
                   <Line
-                    dataKey="Three-month mean"
+                    dataKey="Average of last 3 months"
                     stroke="#7852a5"
                     strokeDasharray="2 3"
                     dot={false}
@@ -467,16 +476,16 @@ export function Insights({
               </ResponsiveContainer>
             </div>
             <p className="section-note">
-              Backtest amounts in ₹ crore. Solid teal: observed. Dashed amber:
-              last-month baseline. Dotted purple: three-month mean. Every
-              prediction uses only earlier months.
+              Amounts in ₹ crore. Solid teal line: actual payments. Dashed
+              amber: “same as last month” guess. Dotted purple: “average of
+              last 3 months” guess. Each guess uses only earlier months.
             </p>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Method</TableHead>
-                  <TableHead>Validation MAE</TableHead>
-                  <TableHead>Last 3 months test MAE</TableHead>
+                  <TableHead>Average error (choosing months)</TableHead>
+                  <TableHead>Average error (3 test months)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -490,19 +499,19 @@ export function Insights({
               </TableBody>
             </Table>
             <p className="section-note">
-              Mean absolute error (MAE) is the average size of prediction
-              errors; lower is better. Test months were not used to select the
-              method.
+              Average error = how far the guess was from the actual amount, on
+              average; lower is better. The 3 test months were not used to
+              choose the method.
             </p>
             <details style={{ padding: 20 }}>
-              <summary>Show all chronological test predictions</summary>
+              <summary>Show each test month’s guesses</summary>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Month</TableHead>
-                    <TableHead>Observed</TableHead>
-                    <TableHead>Baseline</TableHead>
-                    <TableHead>Three-month mean</TableHead>
+                    <TableHead>Actual</TableHead>
+                    <TableHead>Same as last month</TableHead>
+                    <TableHead>Average of last 3 months</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -524,25 +533,50 @@ export function Insights({
           </>
         )}
         {f && (
-          <ul className="quiet" style={{ padding: '0 32px 20px' }}>
-            {f.limitations.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ul>
+          <div className="quiet" style={{ padding: '0 32px 20px' }}>
+            <ul>
+              <li>
+                There is only one download of the data, so we cannot see
+                whether older months were later corrected or filled in.
+              </li>
+              <li>
+                This is a rough estimate of total payments — not a budget,
+                money still owed, a fraud score or a completion date.
+              </li>
+              <li>
+                The current month is left out because its reports are not
+                complete. A low month can simply mean missing reports.
+              </li>
+              <li>
+                It was tested on only 3 months, so the error could change a
+                lot. We do not give a confidence range.
+              </li>
+            </ul>
+            <details>
+              <summary>Exact wording from the forecast file</summary>
+              <ul>
+                {f.limitations.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+              {f.methodology && <p>{f.methodology}</p>}
+            </details>
+          </div>
         )}
       </div>
       <div className="panel">
         <div className="panel-head">
           <div>
-            <h2>Authority-year vendor concentration</h2>
+            <h2>Does one vendor get most of the money?</h2>
             <p>
-              HHI is the sum of squared payment shares (0–1). A high value may
-              reflect few works or legitimate specialization, not collusion.
-              Ranked by HHI among authority-years with at least 3 vendors and
-              ₹50 lakh settled; single-vendor and smaller authority-years
-              follow, since their HHI is high by construction. Click an
-              authority for its profile, review signals and year-by-year
-              details.
+              For each district authority and year: how the payments were
+              split between vendors. The concentration score runs from 0
+              (spread across many vendors) to 1 (all to one vendor). A high
+              score can have normal reasons — few works, or a specialist
+              supplier — so it is a pattern to check, not proof of collusion.
+              Authority-years with at least 3 vendors and ₹50 lakh paid are
+              listed first; those with a single vendor always score 1, so they
+              come after. Click an authority to see its profile.
             </p>
           </div>
           <a
@@ -550,7 +584,7 @@ export function Insights({
             href="/api/download/IDA_Year_Concentration.csv"
             download
           >
-            Full table
+            Download full table
           </a>
         </div>
         {concentration.error && <p role="alert">{concentration.error}</p>}
@@ -567,11 +601,11 @@ export function Insights({
               <TableRow>
                 {[
                   'Authority',
-                  'FY',
+                  'Year',
                   'Vendors',
-                  'HHI',
-                  'Largest share',
-                  'Reported settled',
+                  'Concentration (0–1)',
+                  'Top vendor’s share',
+                  'Paid',
                 ].map((h) => (
                   <TableHead key={h}>{h}</TableHead>
                 ))}
@@ -607,10 +641,10 @@ export function Insights({
       <div className="panel">
         <div className="panel-head">
           <div>
-            <h2>Connected-data patterns and explanations</h2>
+            <h2>Patterns found in the data</h2>
             <p>
-              Generated from this release. Observations are hypotheses for
-              review, not proof of wrongdoing.
+              Written automatically from this data version. Each pattern is
+              something worth checking, not proof of wrongdoing.
             </p>
           </div>
           <a

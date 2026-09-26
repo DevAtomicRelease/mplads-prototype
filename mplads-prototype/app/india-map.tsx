@@ -84,10 +84,11 @@ export function IndiaMap({
     <section className="panel" aria-label="India state heatmap">
       <div className="panel-head">
         <div>
-          <h2>India — share of works needing high-priority review</h2>
+          <h2>India — share of works flagged high priority</h2>
           <p>
-            Click a state or UT to filter the authority list below. Color shows
-            a percentage, not the number of works or proven misuse.
+            Click a state or UT to show its district authorities below. The
+            colour shows a percentage of the state’s works — not the number of
+            works, and not proven misuse.
           </p>
         </div>
       </div>
@@ -152,12 +153,13 @@ export function IndiaMap({
               high priority
               <br />
               {active.high.toLocaleString('en-IN')} of{' '}
-              {active.works.toLocaleString('en-IN')} connected works
+              {active.works.toLocaleString('en-IN')} works
             </p>
           ) : (
             <p>
-              Hover or focus a region to see its numerator and denominator.
-              Small territories are also selectable in the state table.
+              Point at a state to see how many of its works are high
+              priority. Small territories can also be picked from the list
+              below or the state table.
             </p>
           )}
           <ul className="map-legend">
@@ -188,13 +190,13 @@ export function IndiaMap({
           )}
           <p className="quiet">
             {features.length
-              ? `${states.length - missing.length}/${states.length} data labels matched to local geometry.`
-              : 'Map data load locally; no external tiles.'}
+              ? `${states.length - missing.length} of ${states.length} states / UTs shown on the map.`
+              : 'The map loads from this computer; nothing is fetched online.'}
           </p>
           {!!missing.length && !!features.length && (
             <p role="alert">
-              Not mapped: {missing.map((r) => r.state).join(', ')}. These remain
-              in the table.
+              Not on the map: {missing.map((r) => r.state).join(', ')}. They
+              are still in the table.
             </p>
           )}
         </div>
@@ -208,11 +210,12 @@ export function IndiaMap({
         >
           geoBoundaries / DataMeet, CC BY 2.5 IN
         </a>
-        . Administrative visualization, not a certified survey or statement on
-        disputed boundaries. Publisher metadata lists 2011, although the file
-        includes 36 units and separate Telangana and Ladakh.{' '}
+        . For illustration only — not an official Survey of India map and not
+        a statement on disputed boundaries. The source says 2011, but the file
+        already shows 36 states/UTs, including separate Telangana and
+        Ladakh.{' '}
         <a href="/india-map-provenance.json" target="_blank" rel="noreferrer">
-          Source and limitations
+          Map source details
         </a>
         .
       </p>
