@@ -1,5 +1,8 @@
 # PS 26102 — MPLADS Anomaly, Fraud & Inefficiency Detection
 
+> Historical design proposal. For the implemented architecture, current snapshot,
+> validation limitations and rollout gates, use ARCHITECTURE.md and README.md.
+
 ## Final Project Plan: Architecture, Workflow, AI/ML, Tech Stack & Data Pipeline
 
 **Problem Statement:** SIH 2026 — PS 26102. *Development of an AI-powered system to detect anomalies, fraud, and inefficiencies in MPLAD Scheme implementation.*
@@ -255,7 +258,7 @@ Judges reward a **narrow slice that works end-to-end** (ingest → detect → sc
 ## 11. Execution plan (remaining work, ordered)
 
 1. **Consolidate the tree** — mark `six_source/` canonical; move superseded iterations to `archive/`; update `README` to point at the one true build+serve path.
-2. **Verify end-to-end on a clean machine** — `build.py` → reconciliation gate green → `serve.py` → workspace loads. Confirm the ~22 checks pass on the current dataset (row/hash contracts may need refreshing for the Rajya Sabha cohorts).
+2. **Verify end-to-end on a clean machine** — `build.py` → reconciliation gate green → `serve.py` → workspace loads. Confirm the 21 reconciliation checks pass on the current dataset (row/hash contracts may need refreshing for the Rajya Sabha cohorts).
 3. **Multi-cohort** — DONE. `six_source` now builds Lok Sabha + Rajya Sabha sitting/retired together into 160,701 namespaced works. Keys are `cohort:mpkey:id` (RS reuses raw work ids across MPs); `mp_key` is cohort-namespaced; contracts are per-cohort hash-locked; reconciliation is recomputed from source (21 checks pass). `--cohorts` selects a subset.
 4. **Role dashboards** — DONE (first cut). New `/api/overview` endpoint + an Overview tab: national + per-cohort KPIs, top-states bar, monthly-settled line, a state risk heatmap (shaded by High-band share) with per-state metrics, and highest-risk district authorities; clicking a state drills to its authorities (State Nodal view) and "Investigate" opens the filtered queue (District view). An **MP view** tab (member lookup → allocation/utilisation KPIs, work-progress funnel, traffic-light workload summary, an honest "unavailable, not passed" compliance panel, and their flagged works) completes the four personas. Map choropleth: DONE — a CSP-safe, dependency-free SVG choropleth of India states (bundled simplified GeoJSON, ~164 KB, fetched same-origin) shaded by High-band share, with hover detail and click-to-drill synced to the heatmap. Telangana/Ladakh have no separate boundary in the base map and are left unshaded.
 

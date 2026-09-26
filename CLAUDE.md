@@ -2,7 +2,7 @@
 
 MPLADS-GUARD: an AI/ML anomaly, fraud-signal and inefficiency detection platform for
 the MPLAD Scheme (SIH 2026 PS 26102). This file orients an agent or contributor; the
-full plan is in [`FINAL_PROJECT_PLAN.md`](FINAL_PROJECT_PLAN.md).
+current implementation is in [`ARCHITECTURE.md`](ARCHITECTURE.md). Earlier plans are historical.
 
 ## Design law (do not violate)
 - **No score is a finding of fraud.** Every alert requests evidence and human review.
@@ -19,7 +19,7 @@ full plan is in [`FINAL_PROJECT_PLAN.md`](FINAL_PROJECT_PLAN.md).
 - `six_source/` — the engine. `build.py` (pipeline), `serve.py` (loopback API + static
   app), `nlq.py` (NL→SQL), `validate.py` (offline A/B), `patterns.py` (report),
   `isolation.py` (vendored Isolation Forest), `common.py` (contracts/hashes), `tests.py`.
-- `mplads-prototype/` — React 19 + Vite UI (`app/six-local.tsx`, built via `vite.six.config.ts`).
+- `mplads-prototype/` — React 19 + Vite UI (`app/six-local.tsx`, `app/project-tools.tsx`, `vite.config.ts`).
 - `evaluation_18/` — the older frozen A/B protocol (reference; superseded by `validate.py`).
 - `archive/` — the superseded three-source iteration (do not extend).
 
@@ -27,19 +27,19 @@ full plan is in [`FINAL_PROJECT_PLAN.md`](FINAL_PROJECT_PLAN.md).
 ```powershell
 .\run.ps1                     # first run creates the venv, builds data + UI, then serves
 ```
-Manual equivalent:
+Safe maintenance commands (from the repository root):
 ```powershell
-python -m venv .venv; .\.venv\Scripts\python -m pip install -r six_source/requirements.txt
-cd six_source; ..\.venv\Scripts\python build.py            # 160,701 works, 21 checks
-..\.venv\Scripts\python patterns.py; ..\.venv\Scripts\python validate.py
-..\.venv\Scripts\python serve.py --port 8766               # serves mplads-prototype/dist/six
+.\.venv\Scripts\python.exe -B six_source/prepare_release.py
+.\.venv\Scripts\python.exe -B six_source/maintenance.py tests
+.\.venv\Scripts\python.exe -B six_source/maintenance.py reproduce
 ```
-Front-end: `cd mplads-prototype && npm run build:six` (or `npm run dev:six` for hot reload,
+Front-end: `cd mplads-prototype && npm run build` (or `npm run dev` for hot reload,
 proxying `/api` to `:8766`). Python 3.12.
 
 ## Tests
-`python six_source/tests.py` — 14 fast invariant checks. `--rebuild` adds a reproducibility
-(hash-equality) check. After any change to `build.py`/`common.py`, run the build and tests.
+The maintenance tests action runs the invariant/API/release/NL/mechanism suite (58 checks at this revision) against
+the active release with isolated review storage. Prepare a new release after analytical
+code changes. Never overwrite files in an active immutable release.
 
 ## Data facts that trip people up
 - The four work files are not disjoint; the master is the **union** of recommendation ∪

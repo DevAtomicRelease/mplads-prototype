@@ -1,5 +1,8 @@
 # PS 26102: restart with six source exports
 
+> Historical delivery plan. Current implementation and acceptance gates are in
+> ../ARCHITECTURE.md, ../README.md and ../SUBMISSION_GUIDE.md.
+
 ## Objective
 
 Build a local, reproducible investigation system joining recommendations, sanctions, completion records, vendor payments, MP allocations and calamity consents. Detect explainable financial exceptions, execution bottlenecks and duplicate candidates; help an officer inspect evidence and record follow-up. No score constitutes fraud evidence or a legal finding.

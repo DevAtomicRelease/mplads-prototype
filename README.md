@@ -1,142 +1,196 @@
-# MPLADS Anomaly, Fraud & Inefficiency Detection — SIH 2026 PS 26102
+# MPLADS-GUARD — PS 26102
 
-An AI/ML platform that ingests MPLADS financial and project-execution data and surfaces **anomalies, fraud signals, and inefficiencies** as explainable, risk-ranked, human-reviewable cases — for Members of Parliament, State Nodal Authorities, District Authorities, and the Ministry (MoSPI).
+A local investigation prototype for MPLADS expenditure, work execution and review.
+**A priority score is a request for evidence, never a finding of fraud.**
+The current release connects all six export types across three cohorts (18 CSV files).
+Raw records, generated outputs and review notes stay on this computer.
 
-> **Design law:** no anomaly score is fraud evidence or a legal finding. Every alert is a *request for evidence and human review*. Checks with no supporting data (asset photos, SC/ST tags, trust registration, GPS) are shown as **visibly unavailable**, never silently passed. No data leaves the device by default.
+## 1. Start and stop
 
-Full engineering plan: **[`FINAL_PROJECT_PLAN.md`](FINAL_PROJECT_PLAN.md)**. Domain background: [`PS26102_MPLADS_Context.md`](PS26102_MPLADS_Context.md).
+1. Install Python 3.12 and Node.js 22.13 or newer, available on PATH.
+2. Keep the authorized source files in the three folders below.
+3. Double-click **START.cmd**. Leave its window open.
+4. Wait for “MPLADS-GUARD is ready”. The launcher opens **http://127.0.0.1:8766/**.
+5. To stop, double-click **STOP.cmd** or press Ctrl+C in the launcher window.
 
----
+First setup downloads dependencies. A missing/stale data release takes several minutes
+to rebuild. Subsequent starts reuse verified outputs and work offline. No Docker,
+database installation, API key or separate frontend/backend terminal is needed.
 
-## Repository layout (canonical)
+Expected screen: Overview shows **160,701 works**, **6,641 High-band reviews**,
+**₹7,998.31 crore sanctioned**, and **₹4,592.56 crore reported settled**, assessed
+as of **14 September 2026**. “Members with works” is 962; the allocation-inclusive MP
+table contains 1,023 records. These are coverage counts, not verified national completeness.
 
-| Path | Role |
+Required folders:
+
+```text
+Dataset/
+  Lok Sabha/
+  Rajya_Sabha_sitting/
+  Rajya_Sabha_retired/
+```
+
+Each must contain 01_allocated_limit.csv, 02_calamity_consent.csv,
+03_works_recommended.csv, 04_works_sanctioned.csv, 05_works_completed.csv and
+06_expenditure.csv. Do not edit raw files to satisfy a check. Changed inputs require
+an authorized, reviewed update to the frozen source contract.
+
+Optional PowerShell commands from this folder:
+
+```powershell
+.\run.ps1 -Port 8770       # alternate port
+.\stop.ps1 -Port 8770      # stop that recorded instance only
+.\run.ps1 -NoBrowser       # start without opening a browser
+.\run.ps1 -Rebuild         # force a complete verified release
+```
+
+## 2. Use the frontend
+
+| Screen | What to do / what it means |
 |---|---|
-| `Dataset/` | Immutable source CSVs, per cohort: `Lok Sabha/`, `Rajya_Sabha_sitting/`, `Rajya_Sabha_retired/`. Six files each (allocation, calamity consent, recommended, sanctioned, completed, expenditure). **Never edited.** All three build together into 160,701 works. |
-| `run.ps1` | One-command launcher: venv → build → front-end → serve. See **Run & test** below. |
-| `six_source/` | **Canonical engine.** `build.py` (data + feature + detection pipeline), `serve.py` (loopback investigation API), `nlq.py` (local deterministic natural-language query engine), `validate.py` (offline A/B screening comparison), `patterns.py` (relations/pattern report), `isolation.py` (vendored NumPy Isolation Forest), `tests.py` (invariant tests), `common.py` (versioned contracts & hashes). |
-| `mplads-prototype/` | React 19 + Vite + TypeScript front-end (investigation workspace; `app/six-local.tsx`). |
-| `evaluation_18/` | The earlier frozen A/B protocol (reference; superseded by `six_source/validate.py`). |
-| `FINAL_PROJECT_PLAN.md`, `CLAUDE.md` | Full plan; contributor/agent guide. |
-| `archive/` | Superseded three-source iteration, kept for provenance only. See `archive/README.md`. |
+| Overview | Read totals and the India heatmap. Select a state/UT, then click an authority name to open its profile, reasons and year breakdown. The latest payment month is incomplete. |
+| Ask the data | Try “Which districts in Bihar have the most delays?” Read the interpretation, SQL and caveat. This is a bounded local question parser, not an LLM. Unsupported requests are refused. |
+| Work investigation | Filter state, year, lifecycle, signal, cohort and band. Open a work for dates, payments, reason codes, cost peers and similar descriptions. |
+| MP view | Search members and page through results. Inspect progress, spending and missing compliance evidence. |
+| Entities | Search full MP, authority and vendor profiles; inspect the underlying records. |
+| Similar works | Compare candidate descriptions and amounts. A text match is not proof of duplicate assets. |
+| Review register | Find assigned cases, due dates and status; reopen a work. History survives releases. |
+| Insights & forecast | Inspect authority-year vendor concentration, connected-data findings and an experimental payment forecast with chronological backtests. |
+| A/B validation | Change review capacity; compare recovery, actual workload, false alerts and uncertainty. Download all metrics and seed checks. |
+| Data & research | Read source coverage, limitations, research and field definitions. |
+| Project status & tools | Check integrity, run tests/reproduction/release jobs, read logs, get help and download reports. |
 
----
+**Review a case:** open a work → inspect evidence → enter disposition, evidence note,
+owner, due date and status → save → check Review register. Entries are append-only
+and version-linked. Owner is a label, not an authenticated identity. “Closed” is a
+workflow state, not exoneration or a fraud verdict.
 
-## Run & test the full project
+Use anonymized/example notes during a demonstration, or an isolated review database.
+Do not turn a demonstration into an allegation against a real person.
 
-Python 3.12; Node 22+ only for building the UI. Everything runs locally on `127.0.0.1`.
+### Quick check of the refined interface
 
-### One command (Windows, PowerShell)
+1. In Overview, select **Uttar Pradesh** on the map or dropdown. Open **JAUNPUR**
+   in the authority table: its profile should show 2,248 connected works and 283
+   high-priority works. Use **View this entity's connected works** only when you
+   want the investigation queue.
+2. In Ask the data, enter `JAUNPUR(DISTRICT MAGISTRATE JAUNPUR_IDA), give me details on this.`
+   The answer includes the exact authority and a full-profile action. Named-entity
+   rankings also link to exact profiles; ambiguous names require a choice.
+3. Every table has search and **Jump to page** followed by **Go**. Large lists search
+   all matching records, not just the visible page. Small summary tables search only
+   their stated scope (for example, national top 20). Clear search to restore rows.
+4. In Insights & forecast, read the three-series chart in INR crore, separate test
+   errors, concentration search and structured connected-data report.
+5. In A/B validation, follow sections 1-6: methods, results/workload, mechanisms,
+   sensitivity and ML, evidence/reproduction, then limits. Change capacity to compare
+   workload, not just recovery. No outcome here establishes real fraud accuracy.
+6. In Data & research, follow sections 1-5. In the dictionary, jump to page 6 to see
+   entries 251-292; searching `paise` resets the table to its matching entries.
+
+## 3. Test from the frontend
+
+Open **Project status & tools → Tools**:
+
+1. **Run invariant and end-to-end checks** — 49 regression tests, including financial
+   reconciliation, query safety, review persistence and release switching. Tests use
+   temporary review databases and do not add test notes to the real ledger.
+2. **Independent rebuild and reproducibility check** — rebuilds in a separate folder;
+   success means all 13 feature CSVs match byte-for-byte. This is not a claim that
+   every binary workbook/SQLite file has identical bytes.
+3. **Re-run offline A/B validation** — creates and activates a separate analytical
+   release; it never overwrites a release being read.
+4. **Generate the Excel review workbook** — staged refresh; the workbook is a review
+   summary (top 1,000 works and top 500 vendors), not the full data export.
+5. **Build, validate and activate a new release** — full source verification,
+   engineering, validation, forecasts, workbook and regression checks.
+
+Only one maintenance action runs at a time across processes. Jobs show completion or
+failure and expandable logs. Keep the service running during a job. Refresh the page
+after release activation. Old test/reproduction evidence is not shown as current
+for a different release; rerun the checks when needed.
+
+Full data exports, reason contributions, concentration, forecasts, source/audit hashes,
+the A/B report and the Excel review workbook are in **Downloads**. Use CSVs for the
+complete analytical dataset; SQLite is the indexed local serving store.
+
+## 4. What the A/B result establishes
+
+This is an **offline development benchmark**, not a randomized officer trial or
+independent fraud-accuracy validation. Synthetic source-shaped mechanisms and
+legitimate exceptions pass through the real feature functions and rule engine.
+The benchmark and duplicate retrieval were revised after inspection.
+
+Seed 26102: 1,440 evaluation works, including 120 injected positive cases.
+
+| Review capacity | A recovery | B recovery | Actually reviewed A / B | False alerts A / B |
+|---|---:|---:|---:|---:|
+| 5% (72 maximum) | 40% | 40% | 72 / 72 | 24 / 24 |
+| 10% (144 maximum) | 60% | 90% | 96 / 144 | 24 / 36 |
+| 20% (288 maximum) | 60% | 100% | 96 / 156 | 24 / 36 |
+
+A uses operational/payment rules. B adds historical-cost, similar-description and
+year-end-payment rules. Both use production weights and work-ID tie ordering.
+Zero-score fillers are not reviewed, so equal capacity is **not equal actual workload**.
+
+At 10%, both methods yield 75% injected findings per review; B reviews more cases.
+The paired context-bootstrap recovery difference is **−1.7 to +40.0 percentage
+points** (95%, conditional on fitted synthetic scores), so this interval includes
+zero. It is not an interval for real fraud detection. Seeds 26103/26104 are sensitivity
+checks, not external validation. Real-data queue overlap measures disagreement,
+not correctness. Isolation Forest and DBSCAN diagnostics are separate, in-sample
+and not calibrated probabilities.
+
+The forecast chooses between last-month and trailing-three-month means on earlier
+validation months, then evaluates three later months. Test MAE is ₹56.65 crore for
+the baseline versus ₹43.34 crore for the selected mean. Three test months are too
+few for a production claim. September is excluded from training; the projection
+is for the **full month**, not remaining expenditure.
+
+## 5. If something goes wrong
+
+| Symptom | Action |
+|---|---|
+| “Local data service unavailable” | Start START.cmd and use its printed URL. Opening frontend files or a preview server alone does not start the data service. |
+| Old screen / blank results | Use the launcher URL, not an old development tab; refresh after a build. |
+| Port already used | Use an alternate port. The launcher never kills an unrelated process. |
+| Missing Python / Node | Install the prerequisites above, reopen the terminal, then launch again. |
+| Source hash mismatch | Keep the raw export unchanged. Restore the authorized exact input or review/update the data contract; do not bypass verification. |
+| Job failed | Expand its log in Tools. The previous release and review history are retained. |
+| Old review after a rebuild | Intentional: it remains attached to the version reviewed. Reassess against current evidence before adding a new entry. |
+| Stop refuses process identity | It refuses to kill a process that cannot be verified as this project. Check the original launcher; do not kill arbitrary Python processes. |
+
+## 6. Architecture, readiness and development
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the implemented pipeline and rollout gates,
+and [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md) for the demonstration and acceptance checklist.
+Older plans remain historical references, not implementation claims.
+
+Developer checks (optional; normal users use the frontend):
 
 ```powershell
-.\run.ps1
+.\.venv\Scripts\python.exe -B six_source/maintenance.py tests
+.\.venv\Scripts\python.exe -B six_source/maintenance.py reproduce
+.\.venv\Scripts\python.exe -B six_source/prepare_release.py
+.\.venv\Scripts\python.exe -m pip check
 ```
 
-First run creates the virtual environment, builds the dataset (**build → patterns → A/B validation**) and the front-end if they are missing, then serves the app at **http://127.0.0.1:8766/**. `-Rebuild` forces a fresh dataset build; `-Port <n>` changes the port. (Desktop app: the `mplads-guard` preview in `.claude/launch.json` runs this.)
+In mplads-prototype: run npm ci, npm test (four report-parser regressions),
+npm exec -- tsc --noEmit, npm run lint and
+npm run build. For hot reload, npm run dev proxies /api to the running service
+on port 8766. The launcher serves dist/index.html; legacy.html is archived.
+Do not run individual build scripts against an active release.
 
-### Step by step
+**Local research prototype, not production certified.** No officer authentication,
+live MIS integration, adjudicated real-world accuracy, physical asset verification
+or government endorsement is claimed. Missing evidence is unavailable, not passed.
+The bundled map matches all 36 state/UT labels but is not certified current official
+boundary geometry. Its provenance and inconsistent publisher vintage metadata are
+disclosed beside the map; tables remain the authoritative source-labelled view.
 
-```powershell
-# 1. Python environment
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r six_source/requirements.txt   # numpy, pandas, scikit-learn, openpyxl
-
-# 2. Build the connected, audited dataset — all cohorts -> 160,701 works, 21/21 checks
-cd six_source
-..\.venv\Scripts\python build.py
-# ..\.venv\Scripts\python build.py --cohorts lok_sabha          # a single cohort
-
-# 3. Reports (after build)
-..\.venv\Scripts\python patterns.py     # -> local/DATA_PATTERNS.md   (relations & patterns)
-..\.venv\Scripts\python validate.py     # -> local/ab_metrics.json + AB_Report.md (offline A/B)
-
-# 4. Tests — 14 fast invariant checks
-..\.venv\Scripts\python tests.py
-# ..\.venv\Scripts\python tests.py --rebuild    # + reproducibility (fresh rebuild -> identical hash)
-
-# 5. Front-end (needs Node; once)
-cd ..\mplads-prototype
-npm ci                 # install dependencies (fresh clone / first run)
-npm run build:six      # emits dist/six/
-
-# 6. Serve the local app + API (loopback only)
-cd ..\six_source
-..\.venv\Scripts\python serve.py --port 8766
-```
-
-Open **http://127.0.0.1:8766/**. `build.py` fails closed unless every source file's row count **and** SHA-256 match the frozen contract in `common.py` and all 21 reconciliation checks pass. Outputs (CSV + indexed `mplads.sqlite3` + `audit.json`) land in `six_source/local/` (git-ignored; local by design).
-
-### Front-end development
-
-```powershell
-cd mplads-prototype
-npm run dev:six        # Vite hot-reload at http://127.0.0.1:3001, proxies /api to :8766
-```
-
-Run `python ../six_source/serve.py` in another shell. The six-source UI has its own config `vite.six.config.ts` (entry `six.html` → `app/six-local.tsx`, output `dist/six/`); `serve.py` serves `dist/six/` at the web root and handles `/api/*` from the read-only SQLite. The legacy three-source UI (`index.html` → `dist/local`) is retained but superseded.
-
----
-
-## Data pipeline (what `build.py` does)
-
-1. **Contracts & quarantine** — hash-lock every source (per cohort); quarantine invalid rows (one truncated expenditure row) without touching source files.
-2. **One-work master** — union recommendation ∪ sanction across all cohorts → **160,701 works**, one row each; sanction export governs sanctioned fields. Keys are namespaced `cohort:mpkey:id` (the Rajya Sabha portal reuses work ids across MPs). Money kept in **integer paise**.
-3. **Lifecycle + cost features** — aging, chronology flags, year-end (March) disbursement share, and cost benchmarks computed from **prior fiscal years only** (leakage guard).
-4. **Bounded duplicate candidates** — normalized-text, IDA·activity-blocked, weighted-token similarity with number/generic/phase guards.
-5. **Explained rules + separate unsupervised models** — a 10-rule deterministic engine → `priority_score` (capped 100) + per-point `Rule_Contributions` and 5 bands (Routine/Low/Medium/High/Critical); plus two **separate** descriptive views kept out of the queue — an Isolation Forest `isolation_percentile` and a DBSCAN `dbscan_outlier_flag`.
-6. **Entity rollups** — MP, IDA, vendor, vendor-connection edges, IDA·FY concentration (HHI), monthly payments.
-7. **Outputs** — CSV + indexed SQLite + `audit.json` + `review_workbook.json`.
-8. **Reconciliation gate** — 21 checks (membership counts, paise-exact money sums recomputed from source, score↔contribution equality, no future events, source bytes unchanged); build fails closed on any failure.
-
-Reproducible: fixed `SEED=26102`; pipeline/common SHA recorded in `audit.json`; independent rebuild comparable by output hash.
-
-**Tests:** `python six_source/tests.py` runs 14 fast invariant checks (build reconciliation, namespaced-key uniqueness, score↔contribution equality, band thresholds, unsupervised-signal consistency, NL-query injection-safety/determinism, A/B properties). `python six_source/tests.py --rebuild` adds an end-to-end reproducibility check (fresh rebuild → identical `Work_Features.csv` hash).
-
-### Detection layers → problem-statement asks
-
-- **Financial** — cost outliers (prior-FY robust log-MAD z), payment/completion-vs-sanction deltas, repeated-payment-report sensitivity, vendor concentration (HHI).
-- **Execution** — duplicate/near-duplicate works, stalled-open aging, sanction delay, completion-without-payment.
-- **Compliance & operations** — deterministic rules: sanction delay >45d, open >1yr, no payment >3mo, year-end (March) disbursement concentration. (SC/ST %, ₹75L trust ceiling, jurisdiction, payment-vs-physical-progress: **unavailable** — the exports carry no beneficiary tags, trust register, coordinates or physical-progress %, so these are shown unavailable, not passed.)
-- **Inefficiency** — utilization ratios and category mix at MP/IDA grain.
-- **Unsupervised** — Isolation Forest atypicality and DBSCAN feature-space outliers, both deliberately separate from the rule queue and complementary to each other.
-
-Supervised fraud classification is **Phase-2**, unlocked once investigators label reviewed cases through the feedback loop.
-
----
-
-## What the data shows
-
-Generated by `six_source/patterns.py` (full report in `six_source/local/DATA_PATTERNS.md`). All-cohort build = **160,701 works** across Lok Sabha + Rajya Sabha (sitting/retired). Settled-vs-sanction differs sharply by cohort: **LS 41.6%, RS-sitting 70.9%, RS-retired 78.4%**.
-
-- **Funnel:** 159,794 recommended → 124,155 sanctioned → 61,268 completed.
-- **Queue:** 129,248 works (80.4%) carry ≥1 screen; bands Routine 31,453 / Low 84,348 / Medium 38,277 / High 6,623 / Critical 0.
-- **Dominant signals:** sanction-delay >45d proxy 86,264 (53.7%), no-payment-after-3mo 37,067, pending-recommendation >45d 24,936, open >1yr 18,947, year-end (March) rush 5,899.
-- **Anomaly signals:** high-cost-peer 4,792, near-duplicate-review 6,521 (35,452 candidate pairs), DBSCAN pattern outliers 5,748.
-- **Integrity result:** `paid_over_sanction` = 1 and `completion_over_sanction` = 0 — a legitimate near-clean result on the supplied fields, not a masked failure.
-- **Critical band = 0:** the top observed score is 64; the 81–100 tier is empty and would populate for a genuinely extreme work.
-
-Numbers are descriptive of the supplied exports, not verified national totals.
-
----
-
-## Ask the data (local NL→SQL)
-
-`six_source/nlq.py` answers plain-English questions (*"Which districts in Bihar have the most delays?"*, *"States with the lowest settled-to-sanction ratio"*) **entirely locally** — a deterministic intent parser maps the question to an allow-listed, parameterised aggregate over `Work_Features`, and returns an interpretation, a source-tied summary, a formatted table, and the **exact generated SQL**. No external LLM, no data egress, no hallucination — every number is reproducible from the shown query. Served at `/api/ask`; the "Ask the data" tab exposes it with example prompts.
-
-## Validation (`six_source/validate.py`, "A/B validation" tab)
-
-`validate.py` runs an offline A/B screening comparison on the six_source build and writes `local/ab_metrics.json` (served at `/api/validation`) plus `AB_Report.md` and CSVs. Two evidence layers, no fraud-accuracy claim:
-1. **Real retrospective queue comparison** — baseline **A** (seven operational/payment screens) vs enhanced **B** (A + cost-outlier + near-duplicate) on the actual build; report queue **overlap** (Jaccard) at equal review budgets.
-2. **Controlled mechanism benchmark** — seeded synthetic cases whose labels record which screen should fire. The two B-only families (inflated cost, near-duplicate) are scored zero by A, so B's advantage at a fixed budget comes from the enhancement. Reported as recovery per budget with a paired bootstrap 95% interval and per-family selection counts.
-
-Representative result: at a 10% review budget B recovers ~100% vs A's ~78% (+~22 pp), because A ranks cost/duplicate cases as zero; at 5% both are equal (neither budget fits every positive). The earlier `evaluation_18/` protocol (`PROTOCOL.md`) informed this design but is coupled to the archived namespaced release.
-
----
-
-## Security & privacy
-
-Loopback-only (`127.0.0.1`), exact-Host check, read-only SQLite URI, strict CSP, same-origin review writes, no query strings in logs, source bytes verified unchanged every build. No external LLM or cloud call by default. Generated outputs and review notes stay local.
-
-## License
-
-MIT for source code (`LICENSE`). Inclusion of supplied MPLADS records establishes no separate data-redistribution license or government endorsement.
+Source code is MIT licensed. Dataset inclusion does not establish redistribution
+rights. The runtime uses loopback, same-origin write checks, allow-listed jobs,
+read-only analytical SQLite and an independent review ledger. Never expose this
+unauthenticated prototype to the internet. No raw records or reports were published
+as part of this completion work.

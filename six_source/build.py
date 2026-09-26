@@ -204,8 +204,11 @@ def lifecycle_features(work, as_of):
     field(work,"payment_sanction_delta_paise",(work.successful_payment_paise-work.sanction_amount_paise).where(work.has_successful_payment_evidence),"Observed successful expenditure minus sanction; missing payment evidence remains null","04/06")
     field(work,"paid_to_sanction_ratio",ratio(work.successful_payment_paise,work.sanction_amount_paise).where(work.has_successful_payment_evidence),"Observed settled amount / sanction, null when no settlement evidence","04/06")
     field(work,"completion_payment_gap_paise",(work.completion_actual_paise-work.successful_payment_paise).where(work.in_completed & work.has_successful_payment_evidence),"Completion actual minus observed successful payments; not assumed recoverable/unpaid money","05/06")
-    field(work,"paid_over_sanction_flag",work.payment_sanction_delta_paise.gt(1).fillna(False),"Reported successful payments exceed sanction by more than one paise; investigate revised orders","04/06")
-    field(work,"completion_over_sanction_flag",work.completion_sanction_delta_paise.gt(1).fillna(False),"Reported completion actual exceeds sanction by more than one paise; investigate revised orders","04/05")
+    # Financial materiality: ignore trivial or rounding-level excesses. A payment/completion
+    # overage flags only when it clears both an absolute floor (INR 10,000) and 2% of sanction.
+    material = np.maximum(1_000_000.0, work.sanction_amount_paise.astype("float64") * 0.02)
+    field(work,"paid_over_sanction_flag",(work.payment_sanction_delta_paise.astype("float64") > material).fillna(False),"Reported successful payments exceed sanction by a material margin (over the greater of INR 10,000 and 2% of sanction); investigate revised orders","04/06")
+    field(work,"completion_over_sanction_flag",(work.completion_sanction_delta_paise.astype("float64") > material).fillna(False),"Reported completion actual exceeds sanction by a material margin (over the greater of INR 10,000 and 2% of sanction); investigate approved scope/revised sanction","04/05")
     field(work,"repeat_payment_report_flag",work.repeated_report_excess_rows.gt(0),"At least one repeated report fingerprint; payment duplication unproven","06")
     field(work,"march_settled_share",ratio(work.march_successful_paise,work.successful_payment_paise).where(work.has_successful_payment_evidence),"Share of settled amount disbursed in March; null without settlement evidence","06")
     field(work,"march_rush_flag",(work.has_successful_payment_evidence & work.march_successful_paise.gt(0) & work.march_settled_share.ge(0.8)).fillna(False),"At least 80% of settled amount disbursed in March (financial year-end); verify progress at time of payment, not itself misuse","06")
@@ -248,7 +251,7 @@ def cost_features(work):
         field(work,col,data[col],"Prior-financial-year benchmark: state/activity first, activity fallback, minimum 20 peers; log-MAD scale floor 0.1", "04", "Uses earlier fiscal years only; exports may be retrospectively updated")
     field(work,"cost_peer_log_z",(np.log1p(amounts)-work.peer_log_median)/work.peer_log_scale,"Log-amount deviation divided by max(1.4826 log-MAD,0.1); null without historical peers", "04", "Prior-financial-year benchmark")
     field(work,"cost_peer_ratio",ratio(amounts,work.peer_median_inr),"Sanction divided by prior-year peer median; not a unit-cost comparison","04","Prior-financial-year benchmark")
-    field(work,"high_cost_peer_flag",(work.cost_peer_log_z.gt(3.5)&work.cost_peer_ratio.ge(2)).fillna(False),"Large prior-year peer amount deviation; quantities/specifications are unavailable","04","Prior-financial-year benchmark")
+    field(work,"high_cost_peer_flag",(work.cost_peer_log_z.gt(3.5)&work.cost_peer_ratio.ge(2)&work.sanction_amount_paise.ge(10000000)).fillna(False),"Large prior-year peer amount deviation on a work of at least INR 1 lakh (materiality floor); quantities/specifications are unavailable","04","Prior-financial-year benchmark")
     return work
 
 
@@ -257,7 +260,7 @@ def duplicate_candidates(work):
     tokens=[set(text.split())-STOP for text in texts]
     frequencies=Counter(token for terms in tokens for token in terms)
     weights={token:math.log1p(len(work)/(1+count)) for token,count in frequencies.items()}
-    postings=defaultdict(list); pairs=[]; tested=0; capped=0; skipped=0
+    postings=defaultdict(list); exact=defaultdict(list); pairs=[]; tested=0; capped=0; skipped=0
     nearest=np.zeros(len(work));counts=np.zeros(len(work),dtype=int);strong=np.zeros(len(work),dtype=bool)
     ids=work.work_id.tolist();ida=work.ida_key.tolist();activity=work.activity_type.tolist();amounts=work.sanction_amount_paise.tolist();phase=work.continuation_cue_flag.tolist()
     for i in range(len(work)):
@@ -268,7 +271,10 @@ def duplicate_candidates(work):
             if len(found)>150: skipped+=1
             candidates.update(found[-150:])
         if len(candidates)>60: capped+=1
-        candidates=sorted(candidates,reverse=True)[:60]
+        exact_key=(ida[i],activity[i],texts[i],amounts[i])
+        # Preserve equal-amount exact-text matches even when text-only windows are crowded.
+        exact_matches=exact[exact_key][-3:] if texts[i] and pd.notna(amounts[i]) else []
+        candidates=sorted(set(exact_matches) | set(sorted(candidates,reverse=True)[:60]))
         eligible=[]
         for j in candidates:
             tested+=1
@@ -282,16 +288,17 @@ def duplicate_candidates(work):
             same_amount=pd.notna(amounts[i]) and pd.notna(amounts[j]) and amounts[i]==amounts[j]
             high=bool(sim>=.96 and same_amount and not(number_conflict or generic or phase[i] or phase[j]))
             eligible.append((sim,j,number_conflict,generic,high,same_amount,same))
-        for sim,j,conflict,generic,high,same_amount,same in sorted(eligible,key=lambda x:(-x[0],ids[x[1]]))[:3]:
+        for sim,j,conflict,generic,high,same_amount,same in sorted(eligible,key=lambda x:(-int(x[4]),-x[0],-int(x[5]),ids[x[1]]))[:3]:
             pair_id="pair:"+"-".join(sorted([ids[i],ids[j]]))
             pairs.append({"pair_id":pair_id,"work_id_a":ids[j],"work_id_b":ids[i],"similarity":round(sim,6),"same_normalized_text":same,"same_amount":same_amount,"number_conflict":conflict,"generic_text":generic,"continuation_cue":bool(phase[i] or phase[j]),"high_similarity_review":high,"ida_key":ida[i],"activity_type":activity[i]})
             for k in (i,j):nearest[k]=max(nearest[k],sim);counts[k]+=1;strong[k]|=high
         for token in anchors:postings[(ida[i],activity[i],token)].append(i)
+        if texts[i] and pd.notna(amounts[i]):exact[exact_key]=(exact[exact_key]+[i])[-3:]
     field(work,"duplicate_similarity",np.round(nearest,6),"Maximum retained weighted-token candidate similarity within same IDA/activity; not asset identity","03/04")
     field(work,"duplicate_candidate_count",counts,"Retained pair incidences; up to three earlier matches emitted per work, earlier endpoints may have more","03/04")
     field(work,"high_similarity_review_flag",strong,"Similarity >=0.96, equal known sanction, no number conflict/generic/phase cue; still needs location/scope evidence","03/04")
     pair_columns=["pair_id","work_id_a","work_id_b","similarity","same_normalized_text","same_amount","number_conflict","generic_text","continuation_cue","high_similarity_review","ida_key","activity_type"]
-    meta={"pairs":len(pairs),"candidate_comparisons":tested,"work_candidate_cap_hits":capped,"posting_window_hits":skipped,"method":"Three rare-token anchors; same IDA/activity; last 150 posting members; 60 earlier candidates; top three >=0.88; deterministic ID order. Not exhaustive, no measured duplicate recall."}
+    meta={"pairs":len(pairs),"candidate_comparisons":tested,"work_candidate_cap_hits":capped,"posting_window_hits":skipped,"method":"Three rare-token anchors; same IDA/activity; last 150 posting members; 60 earlier candidates plus up to three equal-amount exact-text anchors. Retain three >=0.88, prioritising strong evidence then similarity/amount/ID. Not exhaustive; real duplicate recall unknown."}
     return work,pd.DataFrame(pairs,columns=pair_columns),meta
 
 
@@ -486,9 +493,10 @@ def build(input_dir,output_dir,as_of=AS_OF,cohorts=None):
           "totals":{"works":len(work),"recommendations":int(work.in_recommended.sum()),"sanctions":int(work.in_sanctioned.sum()),"completions":int(work.in_completed.sum()),"payment_rows":len(payments),"successful_payment_paise":int(work.successful_payment_paise.sum()),"pending_payment_paise":int(work.pending_payment_paise.sum()),"sanction_paise":int(work.sanction_amount_paise.sum()),"recommended_paise":int(work.recommended_amount_paise.sum()),"completion_actual_paise":int(work.completion_actual_paise.sum()),"allocated_paise":int(tables["MP_Features"].allocated_paise.sum()),"quarantine_rows":len(quarantine),"repeat_excess_rows":int(payments.repeat_excess_row.sum()),"repeat_works":int(work.repeat_payment_report_flag.sum()),"repeat_sensitivity_success_paise":int(work.unique_fingerprint_sensitivity_paise.sum())},
           "rule_counts":{flag:int(work[flag].sum()) for flag,_,_,_ in RULES},"priority_counts":work.priority_band.value_counts().to_dict(),"rules":[{"field":f,"weight":v,"reason":l,"caution":c} for f,v,l,c in RULES],"research":SOURCES,
           "limits":["No independently adjudicated fraud labels, transaction IDs, invoices, revised-sanction ledger, unit quantities, approved due dates or complete progress event history.","Payment Success is used as reported settlement; Payment In-Progress is separate. Report duplicates are retained; sensitivity is not corrected expenditure.","No SC/ST beneficiary-area tags, trust master, geographic coordinates or asset images. These checks are unavailable, not passed.","Completion actual and vendor payments can differ because coverage, taxes/retention, timing and meanings are unresolved. No automatic fraud inference.","All new records, generated outputs and review notes remain local. Publication is not authorized by the previous three-source release.","Isolation Forest is descriptive full-snapshot atypicality and is separate from rule priority. No forecast accuracy is claimed."]}
+    meta["isolation_sha256"]=sha(Path(__file__).parent/"isolation.py")
     write_json(output_dir/"audit.json",meta)
     write_json(output_dir/"review_workbook.json",{"meta":meta,"sheets":{"Source_Coverage":source_audit,"MP_Summary":to_records(tables["MP_Features"]),"Priority_Cases":to_records(work.sort_values(["priority_score","work_id"],ascending=[False,True]).head(1000)),"Monthly_Payments":to_records(tables["Monthly_Payments"]),"Vendor_Summary":to_records(tables["Vendor_Features"].sort_values("successful_payment_paise",ascending=False).head(500)),"Feature_Dictionary":to_records(tables["Feature_Dictionary"])}})
-    write_json(output_dir/"artifact_hashes.json",{p.name:sha(p) for p in sorted(output_dir.glob("*.csv"))})
+    write_json(output_dir/"artifact_hashes.json",{name+".csv":sha(output_dir/(name+".csv")) for name in sorted(tables)})
     print("8/8 Completed: "+json.dumps(json_safe({"tables":meta["table_shapes"],"checks":len(checks),"totals":meta["totals"],"rule_counts":meta["rule_counts"]})),flush=True)
     return meta
 

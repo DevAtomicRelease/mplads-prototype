@@ -1,0 +1,14 @@
+{
+  "source": "geoBoundaries gbOpen IND ADM1, source DataMeet India community / Election Commission of India",
+  "source_metadata": "https://www.geoboundaries.org/api/current/gbOpen/IND/ADM1/",
+  "pinned_geometry": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/IND/ADM1/geoBoundaries-IND-ADM1_simplified.geojson",
+  "upstream_commit": "9469f09",
+  "geometry_sha256": "4c63fe43294a391e8f2de4e9f86f3edb60f8688275b9fee90c61fb2aa0c26061",
+  "retrieved": "2026-09-25",
+  "license": "Creative Commons Attribution 2.5 India",
+  "license_url": "https://creativecommons.org/licenses/by/2.5/in/",
+  "source_license": "https://github.com/datameet/maps",
+  "changes": "Unmodified downloaded simplified GeoJSON; client-side projection and state-name diacritic normalization only.",
+  "expected_units": 36,
+  "limitations": "Metadata boundaryYearRepresented is 2011, inconsistent with separate Telangana and Ladakh in the file. Not independently certified against current Survey of India boundaries. No district boundaries inferred from authority names. Confirm licensed, authoritative boundary currency before official/public deployment. Geometry contains no MPLADS records."
+}
