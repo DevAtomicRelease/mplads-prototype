@@ -65,6 +65,30 @@ release integrity. The complete 13-CSV rebuild evidence above is from the earlie
 25 September check, not a second reproduction claimed for this presentation pass.
 No real review notes, raw source rows or sealed release artifacts were changed.
 
+## Review and hardening (26 September 2026)
+
+- [x] Ask-the-data defects found by a 25-question probe and fixed in `nlq.py`: numbers in
+  durations/years no longer set top-N ("three months" had truncated MP rankings to 3,
+  "2024-25" to 25 rows); national "total"/"how many" questions return one number instead
+  of a state ranking; "repeated payment reports" no longer maps to settled payments; March
+  concentration, pending recommendation, sanction delay, completed-without-payment and
+  average sanction per work are now supported; "2024-25" applies the sanction-year filter
+  and unknown years are refused; all-zero signals return "None found" instead of a ranked
+  list of zeros; sub-crore amounts read in lakh; "MPs" casing fixed.
+- [x] Rule registry shows works flagged per screen; the two zero-prevalence screens are
+  labelled "0 — not observed in this extract". Priority bands list Critical 0 explicitly;
+  the queue band filter shows score ranges.
+- [x] Concentration table ranks material multi-vendor authority-years (>=3 vendors,
+  >=Rs 50 lakh settled) before single-vendor rows, whose HHI is 1.0 by construction
+  (467 of 2,551 rows had filled the first pages). All rows remain listed.
+- [x] Unknown maintenance job returns 400, not 409. Pager no longer repeats
+  "No matching records" under an empty table.
+- [x] 58 backend checks pass (9 new NL/concentration/job regressions); type check, lint,
+  frontend tests and production build pass; all 11 views have no document-wide horizontal
+  overflow at 375px and no console errors; host/origin/traversal/CSP probes hold.
+- Engine analytical code (`build.py`, `common.py`, `isolation.py`, `validate.py`) was not
+  changed, so the sealed active release and its reproducibility evidence remain valid.
+
 ## Non-blocking polish / remaining acceptance work
 
 - Improve workbook wrapping/widths and include workload/false-alert columns in its A/B

@@ -23,7 +23,7 @@ export function TablePager({
       <span>
         {total
           ? `${offset + 1}–${Math.min(offset + size, total)} of ${total.toLocaleString('en-IN')}`
-          : 'No matching records'}
+          : '0 records'}
       </span>
       <div className="table-navigation">
         <button

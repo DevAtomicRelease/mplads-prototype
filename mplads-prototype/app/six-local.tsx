@@ -1538,9 +1538,14 @@ function Queue({
             setBand(v);
             setOffset(0);
           }}
-          items={['', 'Routine', 'Low', 'Medium', 'High', 'Critical'].map(
-            (v) => [v, v || 'All bands'],
-          )}
+          items={[
+            ['', 'All bands'],
+            ['Critical', 'Critical (score 81–100)'],
+            ['High', 'High (40–80)'],
+            ['Medium', 'Medium (20–39)'],
+            ['Low', 'Low (1–19)'],
+            ['Routine', 'Routine (0)'],
+          ]}
         />
         <DownloadLink file="Work_Features.csv">Dataset</DownloadLink>
       </div>
@@ -2655,8 +2660,8 @@ function StatusTools() {
                   ['Reported complete', count(s.totals.completions)],
                   [
                     'Priority bands',
-                    Object.entries(s.priority_counts || {})
-                      .map(([k, v]) => `${k} ${display(v)}`)
+                    ['Critical', 'High', 'Medium', 'Low', 'Routine']
+                      .map((k) => `${k} ${count(s.priority_counts?.[k] ?? 0)}`)
                       .join(' · '),
                   ],
                 ].map(([l, v]) => (
@@ -2832,7 +2837,13 @@ function StatusTools() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {['Screen', 'Weight', 'Reason', 'Required caution'].map(
+                      {[
+                        'Screen',
+                        'Weight',
+                        'Works flagged',
+                        'Reason',
+                        'Required caution',
+                      ].map(
                         (h) => (
                           <TableHead key={h}>{h}</TableHead>
                         ),
@@ -2846,6 +2857,15 @@ function StatusTools() {
                           {r.field}
                         </TableCell>
                         <TableCell>{r.weight}</TableCell>
+                        <TableCell>
+                          {s.rule_counts?.[r.field] === 0 ? (
+                            <span title="The screen is active and tested on constructed cases in A/B validation, but no work in this extract meets it.">
+                              0 — not observed in this extract
+                            </span>
+                          ) : (
+                            count(s.rule_counts?.[r.field])
+                          )}
+                        </TableCell>
                         <TableCell>{r.reason}</TableCell>
                         <TableCell className="quiet">{r.caution}</TableCell>
                       </TableRow>

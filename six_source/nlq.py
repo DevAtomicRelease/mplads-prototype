@@ -25,6 +25,12 @@ METRICS = {
     "duplicates": ("duplicates", "similar-work flags", "count", False),
     "paid_over": ("paid_over", "works with payments over sanction", "count", False),
     "completion_over": ("completion_over", "works with completion amount over sanction", "count", False),
+    "march_rush": ("march_rush", "works with year-end (March) payment concentration", "count", False),
+    "repeat_payments": ("repeat_payments", "works with repeated payment report rows", "count", False),
+    "completed_no_payment": ("completed_no_payment", "reported-complete works with no observed settled payment", "count", False),
+    "avg_sanction": ("avg_sanction", "average sanctioned amount per work", "money", None),
+    "pending_rec": ("pending_rec", "recommendations pending over 45 days", "count", False),
+    "sanction_delay": ("sanction_delay", "works sanctioned over 45 days after recommendation", "count", False),
     "sanction_paise": ("sanction_paise", "sanctioned amount", "money", None),
     "settled_paise": ("settled_paise", "settled (reported) payments", "money", None),
     "pending_paise": ("pending_paise", "in-progress (pending) payments", "money", None),
@@ -33,6 +39,13 @@ METRICS = {
     "mean_priority": ("mean_priority", "mean review priority", "num", False),
 }
 METRIC_WORDS = [
+    # Specific multi-word signals first so generic words ("payment", "completed") cannot capture them.
+    ("march_rush", ["march rush", "year end rush", "year end", "yearend", "march concentration", "march payments", "march spending", "fiscal year end"]),
+    ("repeat_payments", ["repeated payment", "repeat payment", "repeated payments", "repeat payments", "duplicate payment", "duplicate payments", "payment reported twice", "repeated payment report", "repeated payment reports"]),
+    ("completed_no_payment", ["completed without payment", "complete without payment", "completed but unpaid", "completed with no payment", "completion without payment", "completed but not paid"]),
+    ("avg_sanction", ["average sanction", "average sanctioned", "mean sanction", "mean sanctioned", "average cost", "average work cost", "average amount", "average value", "sanction per work", "average project cost"]),
+    ("pending_rec", ["pending recommendation", "pending recommendations", "recommendation pending", "recommendations pending", "awaiting sanction", "not yet sanctioned", "unsanctioned recommendation", "unsanctioned recommendations"]),
+    ("sanction_delay", ["sanction delay", "sanction delays", "delayed sanction", "delayed sanctions", "late sanction", "late sanctions", "slow sanction", "sanctioning delay", "delay in sanction"]),
     ("high", ["high priority", "high-priority", "high risk", "high-risk", "risky", "flagged", "high band", "priority cases", "most at risk"]),
     ("open_over_year", ["open beyond", "beyond one year", "over one year", "over a year", "delayed", "delays", "delay", "stalled", "overdue", "long open", "not completed in time"]),
     ("no_payment_3m", ["no payment", "unpaid", "without payment", "no observed payment"]),
@@ -73,18 +86,15 @@ DIM_WORDS = [
     ("band", ["priority band", "band", "bands"]),
     ("state", ["state", "states", "region", "regions", "state wise", "statewise"]),
 ]
-SIGNALS = {
-    "open_over_one_year_flag": ["open beyond one year", "open over a year", "delayed", "stalled"],
-    "no_payment_three_months_flag": ["no payment after three months", "no payment", "unpaid"],
-    "high_cost_peer_flag": ["high cost", "cost outlier", "overpriced"],
-    "high_similarity_review_flag": ["duplicate", "similar work"],
-    "paid_over_sanction_flag": ["paid over sanction", "payment above sanction", "overpaid"],
-    "repeat_payment_report_flag": ["repeated payment", "repeat payment"],
-}
 COHORT_WORDS = [("rs_sitting", ["sitting"]), ("rs_retired", ["retired"]), ("__rs__", ["rajya sabha", "rajya"]), ("lok_sabha", ["lok sabha", "lok"])]
 DESC_WORDS = ["top", "most", "highest", "largest", "biggest", "maximum", "greatest", "leading", "worst", "poorest"]
 ASC_WORDS = ["bottom", "least", "lowest", "fewest", "smallest", "minimum", "best"]
-NUM_WORDS = {"three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "fifteen": 15, "twenty": 20, "twenty five": 25, "thirty": 30}
+NUM_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "twelve": 12, "fifteen": 15, "twenty": 20, "twenty five": 25, "thirty": 30, "fifty": 50}
+# Words that ask for one number rather than a ranking ("how many ...", "total ...").
+COUNT_WORDS = ["how many", "how much", "total", "overall", "national", "nationally", "in total", "sum of", "what is the", "whats the", "number of"]
+# Nouns a top-N count may qualify ("5 districts"). Months/years are excluded so
+# "no payment after three months" or "open over one year" never set a row limit.
+LIMIT_NOUNS = r"(?:states?|uts?|regions?|districts?|authorit\w*|collectors?|idas?|mps?|members?|parliamentarians?|vendors?|contractors?|suppliers?|activit\w*|categor\w*|cohorts?|bands?)"
 
 EXAMPLES = [
     "Jaunpur, give me details on this authority",
@@ -96,6 +106,10 @@ EXAMPLES = [
     "Top MPs by sanctioned amount in Gujarat",
     "Which activities have the most cost outliers?",
     "Compare settled ratio by cohort",
+    "Which states have the most pending recommendations?",
+    "Top 5 states by March rush",
+    "How many works were completed in 2024-25?",
+    "Total sanctioned amount",
 ]
 
 WF_SELECT = (
@@ -109,6 +123,12 @@ WF_SELECT = (
     "SUM(high_similarity_review_flag) duplicates, "
     "SUM(paid_over_sanction_flag) paid_over, "
     "SUM(completion_over_sanction_flag) completion_over, "
+    "SUM(march_rush_flag) march_rush, "
+    "SUM(pending_recommendation_45d_flag) pending_rec, "
+    "SUM(sanction_delay_45d_flag) sanction_delay, "
+    "SUM(repeat_payment_report_flag) repeat_payments, "
+    "SUM(completion_without_payment_flag) completed_no_payment, "
+    "AVG(sanction_amount_paise) avg_sanction, "
     "SUM(sanction_amount_paise) sanction_paise, "
     "SUM(successful_payment_paise) settled_paise, "
     "SUM(pending_payment_paise) pending_paise, "
@@ -128,14 +148,33 @@ def _find(text, pairs):
     return None
 
 
+def _has(text, word):
+    # Whole-word/phrase membership on the space-padded normalised text.
+    return f" {word} " in text
+
+
 def _limit(text):
-    m = re.search(r"\b(\d{1,3})\b", text)
+    # A number is a row limit only when it qualifies a ranking ("top 5", "bottom ten")
+    # or a rankable noun ("10 districts"). Durations ("three months", "45 days") and
+    # financial years ("2024 25") never set the limit.
+    t = re.sub(r"\b20\d{2}\s+(?:20)?\d{2}\b", " ", text)
+    num = r"(\d{1,3}|" + "|".join(re.escape(w) for w in sorted(NUM_WORDS, key=len, reverse=True)) + r")"
+    m = re.search(r"\b(?:top|bottom|first|last|best|worst|highest|lowest)\s+" + num + r"\b", t) \
+        or re.search(r"\b" + num + r"\s+(?:[a-z]+\s+)?" + LIMIT_NOUNS + r"\b", t)
     if m:
-        return max(1, min(50, int(m.group(1))))
-    for word, value in NUM_WORDS.items():
-        if word in text:
-            return value
+        v = m.group(1)
+        return max(1, min(50, int(v) if v.isdigit() else NUM_WORDS[v]))
     return 10
+
+
+def _fiscal_year(question):
+    # Accept "2024-25", "2024-2025", "2024/25", "FY 2024 25"; data stores "2024-2025".
+    m = re.search(r"\b(20\d{2})\s*[-/–]\s*((?:20)?\d{2})\b", question.lower()) or re.search(r"\bfy\s*(20\d{2})\s+((?:20)?\d{2})\b", question.lower())
+    if not m:
+        return None
+    start, end = int(m.group(1)), m.group(2)
+    end = int(end) if len(end) == 4 else (start // 100) * 100 + int(end)
+    return f"{start}-{end}" if end == start + 1 else "invalid"
 
 
 def parse(question, states):
@@ -157,29 +196,34 @@ def parse(question, states):
         clauses.append("cohort IN (?,?)"); params.extend(["rs_sitting", "rs_retired"]); described.append("Rajya Sabha")
     elif cohort:
         clauses.append("cohort = ?"); params.append(cohort); described.append({"lok_sabha": "Lok Sabha", "rs_sitting": "Rajya Sabha (sitting)", "rs_retired": "Rajya Sabha (retired)"}[cohort])
-    fym = re.search(r"(20\d{2})[ -](20\d{2})", question.lower())
-    if fym:
-        fyval = f"{fym.group(1)}-{fym.group(2)}"
-        clauses.append("sanction_fy = ?"); params.append(fyval); described.append(f"FY {fyval}")
+    fyval = _fiscal_year(question)
+    if fyval:
+        filters["fy"] = fyval
+        if fyval != "invalid":
+            clauses.append("sanction_fy = ?"); params.append(fyval); described.append(f"sanctioned in FY {fyval}")
     # Direction
     direction = "DESC"
-    if any(w in text for w in ASC_WORDS) and not any(w in text for w in ["top", "most", "highest"]):
+    if any(_has(text, w) for w in ASC_WORDS) and not any(_has(text, w) for w in ["top", "most", "highest"]):
         direction = "ASC"
     higher_better = METRICS[metric][3]
-    if "worst" in text or "poorest" in text:
+    if _has(text, "worst") or _has(text, "poorest"):
         direction = "ASC" if higher_better else "DESC"
-    if "best" in text:
+    if _has(text, "best"):
         direction = "DESC" if higher_better else "ASC"
-    ranking = any(w in text for w in DESC_WORDS + ASC_WORDS) or bool(dim) or text.strip().startswith(("which", "what", "list", "rank", "show", "compare"))
+    explicit_rank = any(_has(text, w) for w in DESC_WORDS + ASC_WORDS)
+    ranking = explicit_rank or bool(dim) or text.strip().startswith(("which", "what", "list", "rank", "show", "compare"))
+    count_question = any(_has(text, w) for w in COUNT_WORDS)
     # If a state filter is present and the dimension is state, drill to authorities instead.
     if dim == "state" and matched_state:
         dim = "ida"
-    # Aggregate question ("how many ... in X") with a filter and no grouping dimension.
-    aggregate = (not dim) and (bool(clauses)) and (("how many" in text) or ("total" in text) or ("what is" in text) or not ranking)
+    # One-number questions: "how many ... in X", or a national "total ..." with no
+    # grouping dimension and no ranking word, return a single aggregate row.
+    aggregate = (not dim) and ((bool(clauses) and (count_question or not ranking)) or (count_question and not explicit_rank))
     if not dim and not aggregate:
         dim = "state"
+    averaged = any(_has(text, w) for w in ("average", "mean", "avg", "per work")) and metric not in ("avg_sanction", "mean_priority", "settled_pct", "completion_rate")
     return {"metric": metric, "metric_found": metric_hit is not None, "loaded": loaded, "dimension": dim, "aggregate": aggregate, "clauses": clauses, "params": params,
-            "described": described, "direction": direction, "limit": _limit(text), "filters": filters}
+            "described": described, "direction": direction, "limit": _limit(text), "filters": filters, "averaged": averaged}
 
 
 def _columns(dim, metric=None):
@@ -206,7 +250,9 @@ def _fmt(kind, value):
     if value is None:
         return "—"
     if kind == "money":
-        return f"₹{float(value) / 1e9:,.2f} cr"
+        # paise: 1 crore = 1e9 paise, 1 lakh = 1e7 paise
+        v = float(value)
+        return f"₹{v / 1e7:,.2f} lakh" if 0 < abs(v) < 1e9 else f"₹{v / 1e9:,.2f} cr"
     if kind == "pct":
         return f"{float(value) * 100:.1f}%"
     if kind == "num":
@@ -247,7 +293,14 @@ def answer(db, question):
         intent["dimension"] = None
     if not intent["metric_found"]:
         return _clarify(question, "No exact entity or supported metric was recognized. Try an authority name followed by 'details', or ask about works, delays, high-priority works, cost outliers, settled or pending payments.")
+    fy = intent["filters"].get("fy")
+    if fy:
+        years = [r[0] for r in db.execute("SELECT DISTINCT sanction_fy FROM Work_Features WHERE sanction_fy IS NOT NULL ORDER BY 1")]
+        if fy not in years:
+            return _clarify(question, f"That financial year is not in the connected data. Sanction years available: {', '.join(years)} (e.g. \"2024-25\"). Year filters apply to the sanction year of each work.")
     metric, dim = intent["metric"], intent["dimension"]
+    if intent.get("averaged"):
+        intent["described"].append("totals shown — averages are supported only for sanctioned amount per work")
     where = (" WHERE " + " AND ".join(intent["clauses"])) if intent["clauses"] else ""
     order_alias = METRICS[metric][0]
 
@@ -288,10 +341,15 @@ def answer(db, question):
         row = dict(db.execute(sql, intent["params"]).fetchone())
         cols = _columns(None, metric)
         aprefix = "" if intent["metric_found"] else "No specific metric recognised — showing works and totals. "
-        return _package(question, aprefix + ("Filtered total" if intent["clauses"] else "National total") + ((" " + ", ".join(intent["described"])) if intent["described"] else ""), cols, [row], sql, intent["params"], order_alias, METRICS[metric][2], None, described=intent["described"], metric=metric)
+        return _package(question, aprefix + ("Filtered total" if intent["clauses"] else "National total") + ((" — " + ", ".join(intent["described"])) if intent["described"] else ""), cols, [row], sql, intent["params"], order_alias, METRICS[metric][2], None, described=intent["described"], metric=metric)
 
     gkey, disp = DIMENSIONS[dim][0], DIMENSIONS[dim][1]
-    having = " HAVING COUNT(*) >= 20" if metric in ("settled_pct", "completion_rate", "mean_priority") else ""
+    kind = METRICS[metric][2]
+    having = " HAVING COUNT(*) >= 20" if metric in ("settled_pct", "completion_rate", "mean_priority", "avg_sanction") else ""
+    # A "most X" ranking of a count signal lists only groups that have any X; a ranked
+    # list of zeros would imply an order that does not exist.
+    if kind == "count" and intent["direction"] == "DESC" and metric not in ("works", "sanctioned"):
+        having = (having + " AND " if having else " HAVING ") + f"{order_alias} > 0"
     sql = f"SELECT {disp} _dim, {gkey} _entity_key, {WF_SELECT} FROM Work_Features{where} GROUP BY {gkey}{having} ORDER BY {order_alias} {intent['direction']}, works DESC, {gkey} LIMIT ?"
     rows = [dict(r) for r in db.execute(sql, [*intent["params"], intent["limit"]])]
     if dim == "cohort":
@@ -300,9 +358,19 @@ def answer(db, question):
             r["_dim"] = labels.get(r["_dim"], r["_dim"])
     cols = _columns(dim, metric)
     dirword = "highest" if intent["direction"] == "DESC" else "lowest"
-    prefix = "" if intent["metric_found"] else "No specific metric recognised — ranking by number of works (name a metric such as high-priority, delays, cost outliers, settled or pending amount, settled-to-sanction ratio). "
-    interp = prefix + f"{DIMENSIONS[dim][3].title()} by {METRICS[metric][1]} ({dirword} first)" + ((", " + ", ".join(intent["described"])) if intent["described"] else "") + f", top {intent['limit']}."
-    return _package(question, interp, cols, rows, sql, [*intent["params"], intent["limit"]], order_alias, METRICS[metric][2], DIMENSIONS[dim], metric=metric)
+    interp = f"{_cap(DIMENSIONS[dim][3])} by {METRICS[metric][1]} ({dirword} first)" + ((", " + ", ".join(intent["described"])) if intent["described"] else "") + f", top {intent['limit']}" + (" (groups with at least 20 works)" if "COUNT(*) >= 20" in having else "") + "."
+    result = _package(question, interp, cols, rows, sql, [*intent["params"], intent["limit"]], order_alias, kind, DIMENSIONS[dim], metric=metric)
+    if not rows and "> 0" in having:
+        scope = (" " + ", ".join(intent["described"])) if intent["described"] else " in the connected data"
+        result["summary"] = f"None found: no works{scope} have {METRICS[metric][1].removeprefix('works with ')}, so there is nothing to rank."
+        if metric in ("paid_over", "completion_over"):
+            result["summary"] += " The portal extract records no settled payment or completion amount above the sanctioned amount; the screen stays active and is tested on constructed cases."
+    return result
+
+
+def _cap(label):
+    # Capitalise the first letter only, so "MPs" is not turned into "Mps".
+    return label[:1].upper() + label[1:]
 
 
 def _package(question, interpretation, columns, rows, sql, params, order_alias, kind, dim, described=None, metric=None):
@@ -313,10 +381,13 @@ def _package(question, interpretation, columns, rows, sql, params, order_alias, 
     elif dim is None:
         r = rows[0]
         val = _fmt(kind, r.get(order_alias))
-        summary = f"{label.capitalize()}: {val} across {int(r['works']):,} works" + ((" " + ", ".join(described)) if described else "") + "."
+        summary = f"{_cap(label)}: {val} across {int(r['works']):,} works" + ((" " + ", ".join(described)) if described else "") + "."
     else:
+        for row in rows:
+            if isinstance(row.get("_dim"), str):
+                row["_dim"] = re.sub(r"\s+", " ", row["_dim"]).strip()
         parts = [f"{row['_dim']} ({_fmt(kind, row.get(order_alias))})" for row in rows[:3]]
-        summary = f"{dim[3].capitalize()} ranked by {label}: " + ", ".join(parts) + ("." if len(rows) <= 3 else f", and {len(rows) - 3} more.")
+        summary = f"{_cap(dim[3])} ranked by {label}: " + ", ".join(parts) + ("." if len(rows) <= 3 else f", and {len(rows) - 3} more.")
     return {
         "question": question,
         "interpretation": interpretation,

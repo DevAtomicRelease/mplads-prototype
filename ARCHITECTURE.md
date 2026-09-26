@@ -65,7 +65,12 @@ all source hashes and coverage. The assessment date is fixed at 2026-09-14, not 
   specialization, small denominators or coverage can explain high concentration.
 - Score: sum of reason-code points capped at 100. Routine=0, Low=1–19, Medium=20–39,
   High=40–80, Critical=81–100. These are priority bands, not probabilities; a score of
-  60 does not mean a 60% chance of fraud. Current snapshot has 6,641 High-band works.
+  60 does not mean a 60% chance of fraud. Current snapshot has 6,641 High-band works;
+  Critical is empty (highest observed score is 64). Two screens — payments over sanction
+  and completion over sanction — flag zero works in this extract because no reported
+  settlement or completion amount exceeds its sanction. They remain active, are tested on
+  constructed cases in the A/B benchmark, and are shown as "0 — not observed" in the
+  rule registry rather than hidden.
 - ML: Isolation Forest percentile and DBSCAN noise flag remain separate from rules.
   They fit the retrospective feature snapshot; diagnostics are descriptive/in-sample,
   not future prediction evidence. No supervised fraud model is trained without labels.
@@ -109,6 +114,15 @@ system. Do not bind the service to a public/LAN address or treat this as multi-t
   for a choice on ambiguity, and returns SQL/parameters and stable drill-down keys.
   Unsupported requests and loaded allegations remain refused. This is a local
   deterministic parser, not general natural-language reasoning or an external LLM.
+  Supported signals: high-priority, open >1 year, pending recommendation >45 days,
+  sanction delay >45 days, no payment after 3 months, cost outliers, similar works,
+  repeated payment reports, March concentration, completed without observed payment,
+  payments/completion over sanction, settled/pending/sanctioned amounts, average
+  sanction per work, settled ratio and completion rate. "How many"/"total" questions
+  without a grouping return one national or filtered number; top-N limits are read only
+  from ranking phrases ("top 5", "10 districts"), never from durations or years; short
+  financial years ("2024-25") filter sanction year and unknown years are refused; a
+  "most X" ranking lists only groups with any X and says "None found" when X is absent.
 - `app/india-map.tsx` draws bundled geoBoundaries/DataMeet ADM1 geometry locally,
   with no remote tiles or data transmission. All 36 snapshot state/UT labels match.
   Color encodes High-band works / connected works, with numerator, denominator,

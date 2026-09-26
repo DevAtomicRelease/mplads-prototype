@@ -157,6 +157,54 @@ class NLParsing(unittest.TestCase):
         i = self.parse("which districts in Bihar have the most delays")
         self.assertEqual(i["dimension"], "ida"); self.assertEqual(i["filters"].get("state"), "Bihar"); self.assertEqual(i["metric"], "open_over_year")
 
+    def test_durations_and_years_never_set_row_limit(self):
+        # "three months" and "2024-25" are not top-N requests.
+        self.assertEqual(self.parse("which MPs have the most works with no payment after three months")["limit"], 10)
+        self.assertEqual(self.parse("top states by completed works in 2024-25")["limit"], 10)
+        self.assertEqual(self.parse("top five states by march rush")["limit"], 5)
+        self.assertEqual(self.parse("10 districts with most delays")["limit"], 10)
+
+    def test_short_fiscal_year_is_applied_and_unknown_year_refused(self):
+        i = self.parse("how many works were completed in 2024-25")
+        self.assertEqual(i["filters"].get("fy"), "2024-2025"); self.assertIn("sanction_fy = ?", i["clauses"]); self.assertTrue(i["aggregate"])
+        r = nlq.answer(db(), "how many works in 2030-31")
+        self.assertEqual(r["columns"], []); self.assertIn("not in the connected data", r["summary"])
+
+    def test_national_totals_are_single_numbers(self):
+        with db() as conn:
+            for q, col in [("total sanctioned amount", "sanction_amount_paise"), ("what is the total amount spent", "successful_payment_paise")]:
+                r = nlq.answer(conn, q)
+                self.assertEqual(r["row_count"], 1, q)
+                self.assertEqual(r["rows"][0][nlq.METRICS[self.parse(q)["metric"]][0]], conn.execute(f"SELECT SUM({col}) FROM Work_Features").fetchone()[0], q)
+            self.assertEqual(nlq.answer(conn, "how many duplicate works are there")["row_count"], 1)
+
+    def test_specific_signals_are_not_captured_by_generic_words(self):
+        self.assertEqual(self.parse("top states by repeated payment reports")["metric"], "repeat_payments")
+        self.assertEqual(self.parse("works with march rush in Bihar")["metric"], "march_rush")
+        self.assertEqual(self.parse("which states have the most pending recommendations")["metric"], "pending_rec")
+        self.assertEqual(self.parse("top districts by sanction delay")["metric"], "sanction_delay")
+        self.assertEqual(self.parse("activities with most completed without payment")["metric"], "completed_no_payment")
+        self.assertEqual(self.parse("average sanction amount by state")["metric"], "avg_sanction")
+        self.assertTrue(self.parse("average settled payment by state")["averaged"])
+
+    def test_signal_answers_reconcile_to_flags(self):
+        with db() as conn:
+            r = nlq.answer(conn, "works with march rush in Bihar")
+            self.assertEqual(r["rows"][0]["march_rush"], conn.execute("SELECT SUM(march_rush_flag) FROM Work_Features WHERE state='Bihar'").fetchone()[0])
+            ranked = nlq.answer(conn, "top states by repeated payment reports")
+            self.assertTrue(ranked["rows"]); self.assertTrue(all(row["repeat_payments"] > 0 for row in ranked["rows"]))
+
+    def test_zero_signal_ranking_is_not_a_ranked_list_of_zeros(self):
+        with db() as conn:
+            if conn.execute("SELECT SUM(completion_over_sanction_flag) FROM Work_Features").fetchone()[0]:
+                self.skipTest("signal present in this build")
+            r = nlq.answer(conn, "top states by works with completion over sanction")
+            self.assertEqual(r["row_count"], 0); self.assertTrue(r["summary"].startswith("None found"))
+
+    def test_mp_label_casing(self):
+        r = nlq.answer(db(), "top 3 MPs by sanctioned amount")
+        self.assertTrue(r["summary"].startswith("MPs ranked"), r["summary"])
+
     def test_vendor_filter_refused(self):
         r = nlq.answer(db(), "bottom five vendors by paid amount in Bihar")
         self.assertEqual(r["columns"], []); self.assertIn("cannot be filtered", r["summary"].lower())
@@ -447,6 +495,22 @@ class EndToEnd(unittest.TestCase):
         _, result=self._get("/api/table?kind=concentration&q=Jaunpur")
         self.assertGreater(result["total"],0)
         self.assertTrue(all("jaunpur" in row["ida_name"].lower() for row in result["items"]))
+
+    def test_concentration_ranks_material_multi_vendor_rows_first(self):
+        _, result=self._get("/api/table?kind=concentration&limit=100")
+        material=[r["vendor_count"]>=3 and r["successful_payment_paise"]>=500000000 for r in result["items"]]
+        # Once a trivial row appears, no material row may follow it; HHI descends within the material block.
+        self.assertEqual(material, sorted(material, reverse=True))
+        head=[r["vendor_hhi"] for r,m in zip(result["items"],material) if m]
+        self.assertEqual(head, sorted(head, reverse=True))
+        self.assertTrue(material[0])
+
+    def test_unknown_job_is_bad_request(self):
+        import urllib.request, urllib.error
+        url=f"http://127.0.0.1:{self.port}"
+        req=urllib.request.Request(url+"/api/jobs",data=json.dumps({"name":"not-a-job"}).encode(),headers={"Content-Type":"application/json","Origin":url})
+        with self.assertRaises(urllib.error.HTTPError) as ctx:urllib.request.urlopen(req,timeout=10)
+        self.assertEqual(ctx.exception.code,400)
 
     def test_dictionary_search_definition_and_pagination(self):
         _, result=self._get("/api/table?kind=dictionary&q=paise")

@@ -538,8 +538,11 @@ export function Insights({
             <p>
               HHI is the sum of squared payment shares (0–1). A high value may
               reflect few works or legitimate specialization, not collusion.
-              Click an authority for its profile, review signals and
-              year-by-year details.
+              Ranked by HHI among authority-years with at least 3 vendors and
+              ₹50 lakh settled; single-vendor and smaller authority-years
+              follow, since their HHI is high by construction. Click an
+              authority for its profile, review signals and year-by-year
+              details.
             </p>
           </div>
           <a

@@ -334,7 +334,13 @@ class Handler(SimpleHTTPRequestHandler):
                         if value:clause.append(f'"{key}"=?');args.append(value)
                     where=" WHERE "+" AND ".join(clause) if clause else ""
                     total=db.execute(f'SELECT COUNT(*) FROM "{table}"'+where,args).fetchone()[0]
-                    rows=db.execute(f'SELECT * FROM "{table}"'+where+f' ORDER BY "{sort}" DESC, rowid LIMIT ? OFFSET ?',[*args,size,offset])
+                    order=f'"{sort}" DESC, rowid'
+                    if kind=="concentration":
+                        # HHI is automatically 1.0 with one payee; rank material multi-vendor
+                        # authority-years (>=3 vendors, >=Rs 50 lakh settled) first so trivial
+                        # rows do not bury them. All rows remain listed.
+                        order='(vendor_count>=3 AND successful_payment_paise>=500000000) DESC, vendor_hhi DESC, successful_payment_paise DESC, rowid'
+                    rows=db.execute(f'SELECT * FROM "{table}"'+where+f' ORDER BY {order} LIMIT ? OFFSET ?',[*args,size,offset])
                     items=[dict(r) for r in rows]
                     if kind=="concentration":
                         names={r[0]:r[1] for r in db.execute("SELECT ida_key, ida_name FROM IDA_Features")}
@@ -372,6 +378,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if not 0<size<=1024:return self.reply({"error":"Job request too large"},413)
                 if self.headers.get("Content-Type","").split(";")[0]!="application/json":return self.reply({"error":"JSON required"},415)
                 name=json.loads(self.rfile.read(size)).get("name")
+                if name not in ALLOWED_JOBS:return self.reply({"error":"Unknown job"},400)
                 job=start_job(name,self.server.local)
                 return self.reply({"started":True,**job_view(job)})
             except ValueError as exc:return self.reply({"error":str(exc)},409)

@@ -37,7 +37,7 @@ Front-end: `cd mplads-prototype && npm run build` (or `npm run dev` for hot relo
 proxying `/api` to `:8766`). Python 3.12.
 
 ## Tests
-The maintenance tests action runs 39 invariant/API/release/mechanism checks against
+The maintenance tests action runs the invariant/API/release/NL/mechanism suite (58 checks at this revision) against
 the active release with isolated review storage. Prepare a new release after analytical
 code changes. Never overwrite files in an active immutable release.
 
