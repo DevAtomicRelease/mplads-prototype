@@ -260,7 +260,7 @@ def duplicate_candidates(work):
     tokens=[set(text.split())-STOP for text in texts]
     frequencies=Counter(token for terms in tokens for token in terms)
     weights={token:math.log1p(len(work)/(1+count)) for token,count in frequencies.items()}
-    postings=defaultdict(list); pairs=[]; tested=0; capped=0; skipped=0
+    postings=defaultdict(list); exact=defaultdict(list); pairs=[]; tested=0; capped=0; skipped=0
     nearest=np.zeros(len(work));counts=np.zeros(len(work),dtype=int);strong=np.zeros(len(work),dtype=bool)
     ids=work.work_id.tolist();ida=work.ida_key.tolist();activity=work.activity_type.tolist();amounts=work.sanction_amount_paise.tolist();phase=work.continuation_cue_flag.tolist()
     for i in range(len(work)):
@@ -271,7 +271,10 @@ def duplicate_candidates(work):
             if len(found)>150: skipped+=1
             candidates.update(found[-150:])
         if len(candidates)>60: capped+=1
-        candidates=sorted(candidates,reverse=True)[:60]
+        exact_key=(ida[i],activity[i],texts[i],amounts[i])
+        # Preserve equal-amount exact-text matches even when text-only windows are crowded.
+        exact_matches=exact[exact_key][-3:] if texts[i] and pd.notna(amounts[i]) else []
+        candidates=sorted(set(exact_matches) | set(sorted(candidates,reverse=True)[:60]))
         eligible=[]
         for j in candidates:
             tested+=1
@@ -285,16 +288,17 @@ def duplicate_candidates(work):
             same_amount=pd.notna(amounts[i]) and pd.notna(amounts[j]) and amounts[i]==amounts[j]
             high=bool(sim>=.96 and same_amount and not(number_conflict or generic or phase[i] or phase[j]))
             eligible.append((sim,j,number_conflict,generic,high,same_amount,same))
-        for sim,j,conflict,generic,high,same_amount,same in sorted(eligible,key=lambda x:(-x[0],ids[x[1]]))[:3]:
+        for sim,j,conflict,generic,high,same_amount,same in sorted(eligible,key=lambda x:(-int(x[4]),-x[0],-int(x[5]),ids[x[1]]))[:3]:
             pair_id="pair:"+"-".join(sorted([ids[i],ids[j]]))
             pairs.append({"pair_id":pair_id,"work_id_a":ids[j],"work_id_b":ids[i],"similarity":round(sim,6),"same_normalized_text":same,"same_amount":same_amount,"number_conflict":conflict,"generic_text":generic,"continuation_cue":bool(phase[i] or phase[j]),"high_similarity_review":high,"ida_key":ida[i],"activity_type":activity[i]})
             for k in (i,j):nearest[k]=max(nearest[k],sim);counts[k]+=1;strong[k]|=high
         for token in anchors:postings[(ida[i],activity[i],token)].append(i)
+        if texts[i] and pd.notna(amounts[i]):exact[exact_key]=(exact[exact_key]+[i])[-3:]
     field(work,"duplicate_similarity",np.round(nearest,6),"Maximum retained weighted-token candidate similarity within same IDA/activity; not asset identity","03/04")
     field(work,"duplicate_candidate_count",counts,"Retained pair incidences; up to three earlier matches emitted per work, earlier endpoints may have more","03/04")
     field(work,"high_similarity_review_flag",strong,"Similarity >=0.96, equal known sanction, no number conflict/generic/phase cue; still needs location/scope evidence","03/04")
     pair_columns=["pair_id","work_id_a","work_id_b","similarity","same_normalized_text","same_amount","number_conflict","generic_text","continuation_cue","high_similarity_review","ida_key","activity_type"]
-    meta={"pairs":len(pairs),"candidate_comparisons":tested,"work_candidate_cap_hits":capped,"posting_window_hits":skipped,"method":"Three rare-token anchors; same IDA/activity; last 150 posting members; 60 earlier candidates; top three >=0.88; deterministic ID order. Not exhaustive, no measured duplicate recall."}
+    meta={"pairs":len(pairs),"candidate_comparisons":tested,"work_candidate_cap_hits":capped,"posting_window_hits":skipped,"method":"Three rare-token anchors; same IDA/activity; last 150 posting members; 60 earlier candidates plus up to three equal-amount exact-text anchors. Retain three >=0.88, prioritising strong evidence then similarity/amount/ID. Not exhaustive; real duplicate recall unknown."}
     return work,pd.DataFrame(pairs,columns=pair_columns),meta
 
 
@@ -489,6 +493,7 @@ def build(input_dir,output_dir,as_of=AS_OF,cohorts=None):
           "totals":{"works":len(work),"recommendations":int(work.in_recommended.sum()),"sanctions":int(work.in_sanctioned.sum()),"completions":int(work.in_completed.sum()),"payment_rows":len(payments),"successful_payment_paise":int(work.successful_payment_paise.sum()),"pending_payment_paise":int(work.pending_payment_paise.sum()),"sanction_paise":int(work.sanction_amount_paise.sum()),"recommended_paise":int(work.recommended_amount_paise.sum()),"completion_actual_paise":int(work.completion_actual_paise.sum()),"allocated_paise":int(tables["MP_Features"].allocated_paise.sum()),"quarantine_rows":len(quarantine),"repeat_excess_rows":int(payments.repeat_excess_row.sum()),"repeat_works":int(work.repeat_payment_report_flag.sum()),"repeat_sensitivity_success_paise":int(work.unique_fingerprint_sensitivity_paise.sum())},
           "rule_counts":{flag:int(work[flag].sum()) for flag,_,_,_ in RULES},"priority_counts":work.priority_band.value_counts().to_dict(),"rules":[{"field":f,"weight":v,"reason":l,"caution":c} for f,v,l,c in RULES],"research":SOURCES,
           "limits":["No independently adjudicated fraud labels, transaction IDs, invoices, revised-sanction ledger, unit quantities, approved due dates or complete progress event history.","Payment Success is used as reported settlement; Payment In-Progress is separate. Report duplicates are retained; sensitivity is not corrected expenditure.","No SC/ST beneficiary-area tags, trust master, geographic coordinates or asset images. These checks are unavailable, not passed.","Completion actual and vendor payments can differ because coverage, taxes/retention, timing and meanings are unresolved. No automatic fraud inference.","All new records, generated outputs and review notes remain local. Publication is not authorized by the previous three-source release.","Isolation Forest is descriptive full-snapshot atypicality and is separate from rule priority. No forecast accuracy is claimed."]}
+    meta["isolation_sha256"]=sha(Path(__file__).parent/"isolation.py")
     write_json(output_dir/"audit.json",meta)
     write_json(output_dir/"review_workbook.json",{"meta":meta,"sheets":{"Source_Coverage":source_audit,"MP_Summary":to_records(tables["MP_Features"]),"Priority_Cases":to_records(work.sort_values(["priority_score","work_id"],ascending=[False,True]).head(1000)),"Monthly_Payments":to_records(tables["Monthly_Payments"]),"Vendor_Summary":to_records(tables["Vendor_Features"].sort_values("successful_payment_paise",ascending=False).head(500)),"Feature_Dictionary":to_records(tables["Feature_Dictionary"])}})
     write_json(output_dir/"artifact_hashes.json",{name+".csv":sha(output_dir/(name+".csv")) for name in sorted(tables)})

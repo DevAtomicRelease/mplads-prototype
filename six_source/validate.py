@@ -13,8 +13,8 @@ Two evidence layers, no fraud-accuracy claim (there are no adjudicated labels):
   2. Real retrospective queue comparison. A vs B ranking of the actual built works,
      reporting queue overlap (Jaccard) at equal budgets — no accuracy claim.
 
-Evaluation choices (families, seed, cutoff, peer anchors, thresholds) are frozen here
-before any scoring; the production rules are used as-is (no tuning on the test set).
+This versioned development benchmark was revised after inspecting earlier results.
+It uses production rules, not an independently held-out real-world fraud test set.
 
     python validate.py
 """
@@ -92,6 +92,7 @@ def generate(rng):
     rec_rows, san_rows, comp_rows, pay_rows = [], [], [], []
     labels = {}  # work_id -> (family, is_positive)
     counter = [0]
+    context = None
 
     def newid():
         counter[0] += 1
@@ -111,7 +112,7 @@ def generate(rng):
             amt, date = p[0], p[1]; status = p[2] if len(p) > 2 else "Payment Success"
             pay_rows.append(_pay(wid, mp, str(1000 + counter[0] % 200), amt, date, status))
         if family is not None:
-            labels[wid] = (family, positive)
+            labels[wid] = (family, positive, context or wid)
         return wid
 
     # 1) Peer background: prior-FY sanctioned works so the cost benchmark has >=20 peers.
@@ -126,6 +127,7 @@ def generate(rng):
         return max(50000.0, float(base * (1 + rng.normal(0, frac))))
 
     for pi in range(INSTANCES):
+        context = f"context-{pi}"
         amt = jitter(PEER_MEDIAN)
         # Recent (< 1 year before the snapshot) but early enough that later events
         # (completion at cur+90, payments at cur+~50) stay on or before the snapshot —
@@ -151,9 +153,10 @@ def generate(rng):
              payments=[(amt * 0.8, pd.Timestamp("2026-03-20"))])
         emit("Inflated cost vs peers (B only)", True, PEER_MEDIAN * 10, cur - pd.Timedelta(days=20), cur,
              payments=[(PEER_MEDIAN * 6, cur + pd.Timedelta(days=40))])
-        # Each pair gets its own rare token ("blockword") so the two works anchor to each
-        # other (not lost among the routine background), identical text and equal amount.
-        blockword = f"pilotblock{pi:03d}"
+        # Half the pairs use a rare token; half share a crowded description block.
+        # Candidate retrieval must retain both situations using the production path.
+        # Both endpoints have identical text and equal amounts.
+        blockword = f"pilotblock{pi:03d}" if pi % 2 else "shared locality"
         shared = f"Construction of concrete cross drainage culvert at {blockword} beside panchayat depot"
         emit("Near-duplicate description (B only)", True, amt, cur - pd.Timedelta(days=20), cur, desc=shared,
              payments=[(amt * 0.6, cur + pd.Timedelta(days=40))])
@@ -191,6 +194,7 @@ def generate(rng):
 
     # Large routine-negative background so positives are a realistic low share of the
     # review pool and the budget is the binding constraint.
+    context = None
     for _ in range(ROUTINE_BG):
         amt = jitter(PEER_MEDIAN)
         cur = pd.Timestamp("2025-10-01") + pd.Timedelta(days=int(rng.integers(0, 60)))
@@ -214,8 +218,8 @@ def generate(rng):
     return tables, labels
 
 
-def score_synthetic():
-    rng = np.random.default_rng(SEED)
+def score_synthetic(seed=SEED):
+    rng = np.random.default_rng(seed)
     tables, labels = generate(rng)
     work = connect_works(tables)
     work, _payments = payments_and_links(tables["payments"], work)
@@ -227,12 +231,14 @@ def score_synthetic():
     work = work.assign(score_b=work.priority_score,
                        score_a=work.work_id.map(base).fillna(0).clip(upper=100).astype(int),
                        family=work.work_id.map({k: v[0] for k, v in labels.items()}),
-                       positive=work.work_id.map({k: v[1] for k, v in labels.items()}))
+                       positive=work.work_id.map({k: v[1] for k, v in labels.items()}),
+                       context=work.work_id.map({k: v[2] for k, v in labels.items()}))
     return work[work.family.notna()].reset_index(drop=True)
 
 
 def tie(ids):
-    return np.array([int(hashlib.sha256(f"{SEED}:{x}".encode()).hexdigest()[:16], 16) for x in ids], dtype=np.uint64)
+    # Same score-descending, work-ID-ascending tie policy as the production API.
+    return np.asarray(ids, dtype=str)
 
 
 def topk(score, t, k):
@@ -275,10 +281,12 @@ def evaluate(work):
 
 def bootstrap(work, frac, rng, n_boot=1000):
     pos = work.positive.to_numpy(bool); ids = work.work_id.tolist(); t = tie(ids)
-    a, b = work.score_a.to_numpy(), work.score_b.to_numpy(); idx = np.arange(len(work))
+    a, b = work.score_a.to_numpy(), work.score_b.to_numpy()
+    groups = [np.asarray(indices) for indices in work.groupby("context",sort=True).indices.values()]
     diffs = []
     for _ in range(n_boot):
-        s = rng.choice(idx, len(idx), replace=True)
+        # Resample whole generated contexts, keeping both duplicate endpoints together.
+        s = np.concatenate([groups[i] for i in rng.integers(0,len(groups),size=len(groups))])
         k = max(1, math.ceil(frac * len(s)))
         sub_pos = pos[s]; np_ = max(1, int(sub_pos.sum()))
         # rank within the resample
@@ -305,7 +313,7 @@ def real_overlap(local):
     a = np.array([min(100, a_raw.get(i, 0)) for i in ids], float)
     t = tie(ids); out = {}
     for frac in BUDGETS:
-        k = math.ceil(frac * len(ids)); sa, sb = topk(a, t, k), topk(b, t, k)
+        k = math.ceil(frac * len(ids)); sa = {i for i in topk(a,t,k) if a[i]>0}; sb = {i for i in topk(b,t,k) if b[i]>0}
         out[frac] = (len(sa & sb) / len(sa | sb)) if (sa | sb) else 0.0
     return out
 
@@ -336,7 +344,8 @@ def build(local: Path):
         b["ci95"] = list(bootstrap(work, b["fraction"], rng))
         b["actual_queue_overlap"] = overlap[b["fraction"]]
     metrics = {
-        "version": "six-source-ab-real-v3", "seed": SEED, "synthetic_pool": n, "synthetic_positives": npos, "ml": ml,
+        "version": "six-source-ab-real-v4", "seed": SEED, "synthetic_pool": n, "synthetic_positives": npos, "ml": ml,
+        "seed_sensitivity": [{"seed": seed, "budgets": [{k: v for k,v in bd.items() if k != "scenarios"} for bd in evaluate(score_synthetic(seed))[0]]} for seed in (26103,26104)],
         "design": ("Synthetic source-shaped rows (a prior-year peer background plus labelled positive mechanisms, "
                    "legitimate-exception and difficult negatives) are run through the actual build feature pipeline "
                    "and scored by the actual rule engine. Baseline A uses the operational/payment screens; enhanced B "
@@ -349,7 +358,9 @@ def build(local: Path):
             "Legitimate-exception negatives (large scope, approved extension, revised sanction) are information-limited: some are irreducible false alerts with the supplied fields, and are reported as such.",
             "Recovery, findings-per-review and false-alert burden apply to the synthetic pool and its constructed low prevalence, not to national data; false alerts count genuinely flagged negatives, not zero-score fillers.",
             "The real-data layer reports only an UNWEIGHTED top-k set overlap (Jaccard) at equal budgets — every work counts equally regardless of amount — and makes no accuracy, false-positive-rate or money-saved claim on real rows.",
-            "Evaluation families, seed, cutoff and peer anchors were frozen before scoring; production thresholds are used unchanged (no tuning on the test set).",
+            "This is a development mechanism benchmark, not an independent held-out accuracy test. Cases and duplicate candidate logic were revised after inspection. Separate seed checks probe sensitivity, not independent external validation.",
+            "Intervals resample complete generated contexts (duplicate endpoints together), conditional on fitted synthetic scores. Shared peer construction and full-snapshot ML fitting limit inference; these are not real-world accuracy confidence intervals.",
+            "Production weights and work-ID tie ordering are used. Capacity is a ceiling: zero-score fillers are not reviewed, so actual workload can differ between arms.",
             "This is an offline screening-method comparison, not a prospective randomised trial with adjudicated outcomes.",
         ],
     }

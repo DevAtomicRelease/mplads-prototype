@@ -12,7 +12,9 @@ import shutil
 import sqlite3
 
 import nlq
+from entities import profile
 from common import sha
+from releases import resolve_active, release_version, integrity_reason
 from urllib.parse import parse_qs, unquote, urlsplit
 
 WORK_KEY=re.compile(r"[a-z_]+:[a-z0-9]*:\d+")
@@ -29,12 +31,14 @@ def stale_reason(meta, dataset=None):
             return f"source {s['file']} changed since the build"
     return ""
 
+
 ROOT=Path(__file__).resolve().parents[1]
 LOCAL=Path(__file__).parent/"local"
 SORTS={"priority_score","sanction_amount_paise","successful_payment_paise","sanction_age_days","isolation_percentile","work_id"}
 SIGNALS={"pending_recommendation_45d_flag","sanction_delay_45d_flag","open_over_one_year_flag","no_payment_three_months_flag","paid_over_sanction_flag","completion_over_sanction_flag","repeat_payment_report_flag","march_rush_flag","high_cost_peer_flag","high_similarity_review_flag","dbscan_outlier_flag","completion_without_payment_flag","description_changed_flag","recommendation_missing_flag"}
 OUTCOMES={"Needs evidence","Expected variation","Data issue","Substantiated issue"}
-TABLES={"mps":("MP_Features","mp_name","successful_payment_paise"),"idas":("IDA_Features","ida_name","successful_payment_paise"),"vendors":("Vendor_Features","vendor_name","successful_payment_paise"),"payments":("Payment_Features","vendor_name","source_record"),"dictionary":("Feature_Dictionary","field","table")}
+TABLES={"mps":("MP_Features","mp_name","successful_payment_paise"),"idas":("IDA_Features","ida_name","successful_payment_paise"),"vendors":("Vendor_Features","vendor_name","successful_payment_paise"),"payments":("Payment_Features","vendor_name","source_record"),"dictionary":("Feature_Dictionary","field","table"),"concentration":("IDA_Year_Concentration","ida_key","vendor_hhi")}
+CASE_STATES={"Open","In review","Escalated","Closed"}
 
 # ---- allow-listed background jobs (no arbitrary shell endpoint) ----
 import subprocess, sys, threading, uuid
@@ -59,7 +63,7 @@ def _run_job(job):
     script,_title,total=ALLOWED_JOBS[job["name"]]
     job["state"]="running";job["started"]=datetime.now(timezone.utc).isoformat()
     try:
-        proc=subprocess.Popen([sys.executable,script],cwd=str(Path(__file__).parent),stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8",errors="replace")
+        proc=subprocess.Popen([sys.executable,"maintenance.py",job["name"],"--local",job["local"]],cwd=str(Path(__file__).parent),stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding="utf-8",errors="replace")
         buf=deque(maxlen=120)
         for raw in proc.stdout:
             line=_sanitize(raw.rstrip());buf.append(line);job["log"]=list(buf)
@@ -72,14 +76,15 @@ def _run_job(job):
         job["state"]="failed";job["error"]=_sanitize(str(exc))
     job["finished"]=datetime.now(timezone.utc).isoformat()
 
-def start_job(name):
+def start_job(name,local=LOCAL):
     if name not in ALLOWED_JOBS:raise ValueError("Unknown job")
     with JOB_LOCK:
         for j in JOBS.values():
-            if j["name"]==name and j["state"] in ("queued","running"):
+            if j["state"] in ("queued","running"):
                 raise ValueError(f"A '{name}' job is already {j['state']}")
         jid=uuid.uuid4().hex[:12]
         job={"id":jid,"name":name,"title":ALLOWED_JOBS[name][1],"state":"queued","progress":0.0,"created":datetime.now(timezone.utc).isoformat(),"log":[],"exit_code":None}
+        job["local"]=str(local)
         JOBS[jid]=job
     threading.Thread(target=_run_job,args=(job,),daemon=True).start()
     return job
@@ -90,8 +95,13 @@ def job_view(job,full=False):
     return v
 
 
+class ClosingConnection(sqlite3.Connection):
+    def __exit__(self,*args):
+        try:return super().__exit__(*args)
+        finally:self.close()
+
 def connect(path,readonly=True):
-    db=sqlite3.connect(path.resolve().as_uri()+"?mode=ro",uri=True,timeout=15) if readonly else sqlite3.connect(path,timeout=15)
+    db=sqlite3.connect(path.resolve().as_uri()+"?mode=ro",uri=True,timeout=15,factory=ClosingConnection) if readonly else sqlite3.connect(path,timeout=15,factory=ClosingConnection)
     db.row_factory=sqlite3.Row
     return db
 
@@ -102,7 +112,7 @@ def scalar(params,name,default=""):
 
 def filters(params,prefix=""):
     clauses=[];values=[]
-    for key,column in [("state","state"),("fy","sanction_fy"),("lifecycle","lifecycle"),("mp","mp_key"),("ida","ida_key")]:
+    for key,column in [("state","state"),("fy","sanction_fy"),("lifecycle","lifecycle"),("mp","mp_key"),("ida","ida_key"),("cohort","cohort"),("band","priority_band")]:
         value=scalar(params,key)
         if value:
             if len(value)>300: raise ValueError("Filter too long")
@@ -131,19 +141,23 @@ def page(params):
 
 
 def make_server(port=8766,local=LOCAL,review_db=None,directory=None,verify=True):
-    meta=json.loads((local/"audit.json").read_text(encoding="utf-8"))
+    active=resolve_active(local)
+    meta=json.loads((active/"audit.json").read_text(encoding="utf-8"))
     if not meta.get("all_checks_passed"):raise ValueError("Build is not verified")
     if verify:
-        reason=stale_reason(meta)
+        reason=stale_reason(meta) or integrity_reason(active)
         if reason:raise ValueError(f"Refusing to serve a stale build: {reason}. Re-run build.py.")
     review_db=review_db or local/"reviews.sqlite3"
     review_db.parent.mkdir(parents=True,exist_ok=True)
     with connect(review_db,False) as db:
         db.execute("CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY, record_key TEXT NOT NULL, outcome TEXT NOT NULL, note TEXT NOT NULL, created TEXT NOT NULL, version TEXT NOT NULL)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_review_record_version ON reviews(record_key,version,id)")
+        columns={r[1] for r in db.execute("PRAGMA table_info(reviews)")}
+        for name,default in (("owner",""),("due_date",""),("status","Open")):
+            if name not in columns:db.execute(f"ALTER TABLE reviews ADD COLUMN {name} TEXT NOT NULL DEFAULT '{default}'")
     server=ThreadingHTTPServer(("127.0.0.1",port),partial(Handler,directory=str(directory or ROOT/"mplads-prototype/dist")))
     server.local,server.review_db,server.meta=local,review_db,meta
-    server.version=meta["version"]+":"+meta["source_fingerprint"]+":"+meta.get("work_features_sha256",meta["as_of"])
+    server.version=release_version(active,meta)
     return server
 
 
@@ -175,32 +189,54 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_HEAD()
 
     def status(self):
-        m=self.server.meta;local=self.server.local
+        local,m,version=self.rel()
         def present(name):
             p=local/name;return {"available":p.is_file(),"bytes":(p.stat().st_size if p.is_file() else 0)}
-        repro=None;rp=local/"reproducibility.json"
+        repro=None;rp=self.server.local/"reproducibility.json"
         if rp.is_file():
             try:repro=json.loads(rp.read_text(encoding="utf-8"))
             except Exception:repro=None
+        if repro and repro.get("release_version")!=version:repro=None
+        test_report=None;tp=self.server.local/"test_result.json"
+        if tp.is_file():
+            try:test_report=json.loads(tp.read_text(encoding="utf-8"))
+            except (OSError,ValueError):pass
+        if test_report and test_report.get("release_version")!=version:test_report=None
         with connect(self.server.review_db) as db:
-            reviews=db.execute("SELECT COUNT(*) FROM reviews WHERE version=?",[self.server.version]).fetchone()[0]
-        reason=stale_reason(m)
+            reviews=db.execute("SELECT COUNT(*) FROM reviews WHERE version=?",[version]).fetchone()[0]
+        reason=stale_reason(m) or integrity_reason(local)
         return {
-            "version":self.server.version,"as_of":m.get("as_of"),"cohorts":m.get("cohorts"),"scope":m.get("scope"),
+            "version":version,"active_release":local.name,"as_of":m.get("as_of"),"cohorts":m.get("cohorts"),"scope":m.get("scope"),
             "all_checks_passed":m.get("all_checks_passed"),"checks":m.get("checks"),
             "source_fresh":not reason,"stale_reason":reason,
             "sources":[{"cohort":s.get("cohort"),"file":s.get("file"),"rows":s.get("rows"),"accepted":s.get("accepted_rows"),"quarantined":s.get("quarantined_rows"),"sha256":s.get("sha256")} for s in m.get("sources",[])],
             "totals":m.get("totals"),"table_shapes":m.get("table_shapes"),"rule_counts":m.get("rule_counts"),"priority_counts":m.get("priority_counts"),
             "rules":m.get("rules"),"limits":m.get("limits"),"research":m.get("research"),"duplicate_method":m.get("duplicate_method"),
-            "artifacts":{k:present(v) for k,v in {"ab_metrics":"ab_metrics.json","workbook":"MPLADS_Review.xlsx","patterns":"DATA_PATTERNS.md","reproducibility":"reproducibility.json","quarantine":"Quarantine.csv","audit":"audit.json"}.items()},
-            "reproducibility":repro,"reviews":reviews,
+            "artifacts":{**{k:present(v) for k,v in {"ab_metrics":"ab_metrics.json","workbook":"MPLADS_Review.xlsx","patterns":"DATA_PATTERNS.md","quarantine":"Quarantine.csv","audit":"audit.json"}.items()},"reproducibility":{"available":bool(repro)}},
+            "reproducibility":repro,"tests":test_report,"reviews":reviews,
         }
 
-    def download(self,name):
+    def rel(self):
+        # One consistent (dir, meta, version) per request; cached by the active audit mtime so
+        # an atomic release switch is picked up without restart and never mixes releases.
+        if getattr(self,"_request_release",None):return self._request_release
+        dd=resolve_active(self.server.local)
+        stamp=(dd/"audit.json").stat().st_mtime_ns
+        cache=getattr(self.server,"_relcache",None)
+        if cache and cache[0]==(dd,stamp):
+            self._request_release=cache[1];return cache[1]
+        meta=json.loads((dd/"audit.json").read_text(encoding="utf-8"))
+        if not meta.get("all_checks_passed"):raise ValueError("Active release failed reconciliation")
+        version=release_version(dd,meta)
+        res=(dd,meta,version);self.server._relcache=((dd,stamp),res);self._request_release=res;return res
+
+    def download(self,name,dd):
         allowed={"Work_Features.csv","Payment_Features.csv","Duplicate_Candidates.csv","MP_Features.csv","IDA_Features.csv","Vendor_Features.csv","Vendor_Connections.csv","Monthly_Payments.csv","Calamity_Consents.csv","Feature_Dictionary.csv","Quarantine.csv","audit.json","AB_Report.md","ab_metrics.json","ab_controlled_benchmark.csv","ab_actual_scores.csv","reproducibility.json","MPLADS_Review.xlsx"}
-        if name=="MPLADS_Six_Source_Review.xlsx":
-            file=ROOT/"outputs/six-source-2026-09-09/MPLADS_Six_Source_Review.xlsx"
-        elif name in allowed:file=self.server.local/name
+        allowed.update({"Rule_Contributions.csv","IDA_Year_Concentration.csv","DATA_PATTERNS.md","forecast.json","release_manifest.json"})
+        if name=="reproducibility.json":
+            file=self.server.local/name
+            if file.is_file() and json.loads(file.read_text(encoding="utf-8")).get("release_version")!=self.rel()[2]:return self.reply({"error":"No reproducibility report for this release"},409)
+        elif name in allowed:file=dd/name
         else:return self.reply({"error":"Unknown download"},404)
         if not file.is_file():return self.reply({"error":"This artifact has not been generated yet"},503)
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if file.suffix==".xlsx" else ("text/csv; charset=utf-8" if file.suffix==".csv" else "application/json" if file.suffix==".json" else "text/markdown; charset=utf-8")
@@ -208,30 +244,45 @@ class Handler(SimpleHTTPRequestHandler):
         with file.open("rb") as stream:shutil.copyfileobj(stream,self.wfile,1024*1024)
 
     def do_GET(self):
+        self._request_release=None
         if not self.allowed_host():return self.reply({"error":"Exact loopback host required"},403)
         url=urlsplit(self.path);route=unquote(url.path);params=parse_qs(url.query)
-        if route=="/api/health":return self.reply({"application":"MPLADS Six Source","version":self.server.version,"localOnly":True})
-        if route=="/api/meta":return self.reply({**self.server.meta,"review_version":self.server.version})
+        try:dd,meta,version=self.rel()
+        except (OSError,ValueError,KeyError):return self.reply({"error":"Active release unavailable. Run START.cmd to prepare a verified release."},503)
+        if route=="/api/health":return self.reply({"application":"MPLADS Six Source","version":version,"localOnly":True})
+        if route=="/api/meta":return self.reply({**meta,"review_version":version})
         if route=="/api/status":return self.reply(self.status())
-        if route=="/api/jobs":return self.reply({"jobs":[job_view(j) for j in sorted(JOBS.values(),key=lambda x:x["created"],reverse=True)],"available":[{"name":k,"title":v[1]} for k,v in ALLOWED_JOBS.items()]})
+        if route=="/api/jobs":
+            with JOB_LOCK:jobs=[job_view(j,full=True) for j in sorted(JOBS.values(),key=lambda x:x["created"],reverse=True)]
+            return self.reply({"jobs":jobs,"available":[{"name":k,"title":v[1]} for k,v in ALLOWED_JOBS.items()]})
         if route.startswith("/api/jobs/"):
             job=JOBS.get(route.removeprefix("/api/jobs/"))
             return self.reply(job_view(job,full=True)) if job else self.reply({"error":"Unknown job"},404)
         if route=="/api/validation":
-            path=self.server.local/"ab_metrics.json"
+            path=dd/"ab_metrics.json"
             return self.reply(json.loads(path.read_text(encoding="utf-8"))) if path.is_file() else self.reply({"error":"Run six_source/validate.py first"},503)
-        if route.startswith("/api/download/"):return self.download(route.removeprefix("/api/download/"))
+        if route=="/api/forecast":
+            path=dd/"forecast.json"
+            return self.reply(json.loads(path.read_text(encoding="utf-8"))) if path.is_file() else self.reply({"error":"Prepare a release to generate the forecast"},503)
+        if route=="/api/patterns":
+            path=dd/"DATA_PATTERNS.md"
+            return self.reply({"text":path.read_text(encoding="utf-8")}) if path.is_file() else self.reply({"error":"Pattern report unavailable"},503)
+        if route.startswith("/api/download/"):return self.download(route.removeprefix("/api/download/"),dd)
         if route=="/api/reviews":
+            key=scalar(params,"key")
             with connect(self.server.review_db) as db:
-                rows=[dict(r) for r in db.execute("SELECT * FROM reviews WHERE version=? ORDER BY id",[self.server.version])]
+                rows=[dict(r) for r in db.execute("SELECT * FROM reviews"+(" WHERE record_key=?" if key else "")+" ORDER BY id",[key] if key else [])]
             latest={r["record_key"]:r for r in rows}
-            return self.reply({"reviews":list(latest.values()),"history":rows,"version":self.server.version})
+            return self.reply({"reviews":list(latest.values()),"history":rows,"version":version})
         try:
-            with connect(self.server.local/"mplads.sqlite3") as db:
+            with connect(dd/"mplads.sqlite3") as db:
                 if route=="/api/options":
                     states=[r[0] for r in db.execute("SELECT DISTINCT state FROM Work_Features ORDER BY state")]
                     years=[r[0] for r in db.execute("SELECT DISTINCT sanction_fy FROM Work_Features WHERE sanction_fy IS NOT NULL ORDER BY sanction_fy")]
                     return self.reply({"states":states,"years":years})
+                if route=="/api/entity":
+                    item=profile(db,scalar(params,"kind"),scalar(params,"key"))
+                    return self.reply({**item,"version":version}) if item else self.reply({"error":"Entity not found"},404)
                 if route=="/api/ask":
                     q=scalar(params,"q").strip()
                     if not q:return self.reply({"examples":nlq.EXAMPLES})
@@ -265,26 +316,44 @@ class Handler(SimpleHTTPRequestHandler):
                     if row is None:return self.reply({"error":"Work not found"},404)
                     reasons=[dict(r) for r in db.execute("SELECT * FROM Rule_Contributions WHERE work_id=? ORDER BY points DESC,rule",[key])]
                     pairs=[dict(r) for r in db.execute("SELECT * FROM Duplicate_Candidates WHERE work_id_a=? OR work_id_b=? ORDER BY similarity DESC LIMIT 100",[key,key])]
-                    return self.reply({"work":dict(row),"reasons":reasons,"pairs":pairs,"pairs_returned_limit":100,"version":self.server.version})
+                    return self.reply({"work":dict(row),"reasons":reasons,"pairs":pairs,"pairs_returned_limit":100,"version":version})
                 if route=="/api/table":
                     kind=scalar(params,"kind","mps")
                     if kind not in TABLES:raise ValueError("Unknown table")
                     table,search,sort=TABLES[kind];size,offset=page(params);clause=[];args=[]
                     query=scalar(params,"q").strip()
                     if len(query)>200:raise ValueError("Search too long")
-                    if query:clause.append(f'"{search}" LIKE ?');args.append("%"+query+"%")
+                    if query:
+                        escaped=query.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
+                        columns=[r[1] for r in db.execute(f'PRAGMA table_info("{table}")')]
+                        # Search the complete table, including definitions, IDs and units.
+                        clause.append("("+" OR ".join(f'CAST("{c}" AS TEXT) LIKE ? ESCAPE \'\\\'' for c in columns)+(" OR ida_key IN (SELECT ida_key FROM IDA_Features WHERE ida_name LIKE ? ESCAPE '\\')" if kind=="concentration" else "")+")")
+                        args.extend(["%"+escaped+"%"]*(len(columns)+(kind=="concentration")))
                     for key in (["work_id","vendor_id"] if kind=="payments" else []):
                         value=scalar(params,key)
                         if value:clause.append(f'"{key}"=?');args.append(value)
                     where=" WHERE "+" AND ".join(clause) if clause else ""
                     total=db.execute(f'SELECT COUNT(*) FROM "{table}"'+where,args).fetchone()[0]
-                    rows=db.execute(f'SELECT * FROM "{table}"'+where+f' ORDER BY "{sort}" DESC LIMIT ? OFFSET ?',[*args,size,offset])
-                    return self.reply({"items":[dict(r) for r in rows],"total":total,"limit":size,"offset":offset})
+                    rows=db.execute(f'SELECT * FROM "{table}"'+where+f' ORDER BY "{sort}" DESC, rowid LIMIT ? OFFSET ?',[*args,size,offset])
+                    items=[dict(r) for r in rows]
+                    if kind=="concentration":
+                        names={r[0]:r[1] for r in db.execute("SELECT ida_key, ida_name FROM IDA_Features")}
+                        for item in items:item["ida_name"]=names.get(item["ida_key"],item["ida_key"])
+                    return self.reply({"items":items,"total":total,"limit":size,"offset":offset})
                 if route=="/api/months":return self.reply({"items":[dict(r) for r in db.execute("SELECT payment_month,SUM(successful_payment_paise) successful_payment_paise,SUM(pending_payment_paise) pending_payment_paise FROM Monthly_Payments GROUP BY payment_month ORDER BY payment_month")]})
                 if route=="/api/duplicates":
                     size,offset=page(params)
-                    total=db.execute("SELECT COUNT(*) FROM Duplicate_Candidates").fetchone()[0]
-                    rows=db.execute("SELECT p.*, a.description description_a,b.description description_b,a.sanction_amount_paise amount_a,b.sanction_amount_paise amount_b FROM Duplicate_Candidates p JOIN Work_Features a ON a.work_id=p.work_id_a JOIN Work_Features b ON b.work_id=p.work_id_b ORDER BY p.high_similarity_review DESC,p.similarity DESC,p.pair_id LIMIT ? OFFSET ?",[size,offset])
+                    query=scalar(params,"q").strip()
+                    if len(query)>200:raise ValueError("Search too long")
+                    args=[];where=""
+                    if query:
+                        escaped=query.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")
+                        columns=["a.description","b.description","a.work_id","b.work_id","a.ida_name","b.ida_name"]
+                        where=" WHERE ("+" OR ".join(f"{c} LIKE ? ESCAPE '\\'" for c in columns)+")"
+                        args=["%"+escaped+"%"]*len(columns)
+                    source=" FROM Duplicate_Candidates p JOIN Work_Features a ON a.work_id=p.work_id_a JOIN Work_Features b ON b.work_id=p.work_id_b"
+                    total=db.execute("SELECT COUNT(*)"+source+where,args).fetchone()[0]
+                    rows=db.execute("SELECT p.*, a.description description_a,b.description description_b,a.sanction_amount_paise amount_a,b.sanction_amount_paise amount_b"+source+where+" ORDER BY p.high_similarity_review DESC,p.similarity DESC,p.pair_id LIMIT ? OFFSET ?",[*args,size,offset])
                     return self.reply({"items":[dict(r) for r in rows],"total":total})
         except (ValueError,TypeError) as exc:return self.reply({"error":str(exc)},400)
         except sqlite3.Error:return self.reply({"error":"Local data query failed; verify the dataset build"},500)
@@ -293,6 +362,7 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        self._request_release=None
         origin=self.headers.get("Origin","")
         if not self.allowed_host() or origin!=f'http://{self.headers.get("Host", "")}':return self.reply({"error":"Local same-origin write required"},403)
         path=urlsplit(self.path).path
@@ -302,24 +372,30 @@ class Handler(SimpleHTTPRequestHandler):
                 if not 0<size<=1024:return self.reply({"error":"Job request too large"},413)
                 if self.headers.get("Content-Type","").split(";")[0]!="application/json":return self.reply({"error":"JSON required"},415)
                 name=json.loads(self.rfile.read(size)).get("name")
-                job=start_job(name)
+                job=start_job(name,self.server.local)
                 return self.reply({"started":True,**job_view(job)})
             except ValueError as exc:return self.reply({"error":str(exc)},409)
-            except (TypeError,json.JSONDecodeError):return self.reply({"error":"Invalid job request"},400)
+            except (TypeError,AttributeError,json.JSONDecodeError):return self.reply({"error":"Invalid job request"},400)
         if path!="/api/reviews":return self.reply({"error":"Unknown endpoint"},404)
         try:
+            dd,meta,version=self.rel()
             size=int(self.headers.get("Content-Length","0"))
             if not 0<size<=16384:return self.reply({"error":"Review payload limit is 16 KiB"},413)
             if self.headers.get("Content-Type","").split(";")[0]!="application/json":return self.reply({"error":"JSON required"},415)
             data=json.loads(self.rfile.read(size));key=data.get("key");note=data.get("note");outcome=data.get("outcome")
             if not isinstance(key,str) or len(key)>100 or not isinstance(note,str) or not 1<=len(note.strip())<=3000 or outcome not in OUTCOMES:raise ValueError("Valid record, disposition and 1-3000 character evidence note required")
-            if data.get("version")!=self.server.version:return self.reply({"error":"Dataset changed; reload before saving"},409)
-            with connect(self.server.local/"mplads.sqlite3") as db:
+            if data.get("version")!=version:return self.reply({"error":"Dataset changed; reload before saving"},409)
+            owner=data.get("owner","");due=data.get("due_date","");status=data.get("status","Open")
+            if not isinstance(owner,str) or len(owner)>120 or not isinstance(due,str) or status not in CASE_STATES:raise ValueError("Invalid case assignment")
+            if due:
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}",due):raise ValueError("Invalid due date")
+                datetime.strptime(due,"%Y-%m-%d")
+            with connect(dd/"mplads.sqlite3") as db:
                 found=db.execute("SELECT 1 FROM Duplicate_Candidates WHERE pair_id=?",[key]).fetchone() if key.startswith("pair:") else db.execute("SELECT 1 FROM Work_Features WHERE work_id=?",[key]).fetchone()
             if not found:raise ValueError("Record not in this dataset")
             with connect(self.server.review_db,False) as db:
-                cur=db.execute("INSERT INTO reviews(record_key,outcome,note,created,version) VALUES (?,?,?,?,?)",[key,outcome,note.strip(),datetime.now(timezone.utc).isoformat(),self.server.version]);identifier=cur.lastrowid
-            return self.reply({"saved":True,"id":identifier,"version":self.server.version})
+                cur=db.execute("INSERT INTO reviews(record_key,outcome,note,created,version,owner,due_date,status) VALUES (?,?,?,?,?,?,?,?)",[key,outcome,note.strip(),datetime.now(timezone.utc).isoformat(),version,owner.strip(),due,status]);identifier=cur.lastrowid
+            return self.reply({"saved":True,"id":identifier,"version":version})
         except (ValueError,TypeError,AttributeError,json.JSONDecodeError):return self.reply({"error":"Invalid review payload"},400)
 
 

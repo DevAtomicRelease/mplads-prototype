@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "six-source-2026-09-14-v3"
+VERSION = "six-source-2026-09-14-v4"
 AS_OF = "2026-09-14"
 SEED = 26102
 FILES = {

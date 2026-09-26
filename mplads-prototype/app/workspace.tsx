@@ -1633,8 +1633,8 @@ function ReviewForm({
     [message, setMessage] = useState(''),
     [saving, setSaving] = useState(false);
   useEffect(() => {
-    setOutcome(review?.outcome ?? 'Needs evidence');
-    setNote(review?.note ?? '');
+    const timer=setTimeout(()=>{setOutcome(review?.outcome ?? 'Needs evidence');setNote(review?.note ?? '')},0);
+    return ()=>clearTimeout(timer);
   }, [review]);
   async function submit() {
     setSaving(true);
@@ -1984,7 +1984,7 @@ function EntityDetail({
     ? data.calamities.filter((c) => c.mp_name_key === e.mp_name_key)
     : [];
   const [page, setPage] = useState(0);
-  useEffect(() => setPage(0), [e]);
+  useEffect(() => {const timer=setTimeout(()=>setPage(0),0);return()=>clearTimeout(timer)}, [e]);
   return (
     <div className="drawer-body">
       <h2 className="case-description">
@@ -2015,7 +2015,7 @@ function EntityDetail({
           ],
           [
             'Profile priority',
-            <Band value={s(e, kind + '_review_priority_band')} />,
+            <Band key="profile-band" value={s(e, kind + '_review_priority_band')} />,
           ],
           [
             'Duplicate candidate share',

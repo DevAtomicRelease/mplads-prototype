@@ -11,6 +11,7 @@ local rows, shown with the exact SQL. Nothing here asserts fraud.
 from __future__ import annotations
 
 import re
+from entities import resolve_names, profile
 
 # metric -> (order-by SQL alias, human label, kind, higher_is_better)
 METRICS = {
@@ -86,6 +87,7 @@ ASC_WORDS = ["bottom", "least", "lowest", "fewest", "smallest", "minimum", "best
 NUM_WORDS = {"three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "fifteen": 15, "twenty": 20, "twenty five": 25, "thirty": 30}
 
 EXAMPLES = [
+    "Jaunpur, give me details on this authority",
     "Which states have the most high-priority works?",
     "Top 10 district authorities by works open beyond one year",
     "Which districts in Bihar have the most delays?",
@@ -180,7 +182,7 @@ def parse(question, states):
             "described": described, "direction": direction, "limit": _limit(text), "filters": filters}
 
 
-def _columns(dim):
+def _columns(dim, metric=None):
     label = DIMENSIONS[dim][2].title() if dim else None
     cols = []
     if dim:
@@ -194,6 +196,9 @@ def _columns(dim):
         {"key": "settled_pct", "label": "Settled/sanction", "kind": "pct"},
         {"key": "mean_priority", "label": "Mean priority", "kind": "num"},
     ]
+    if metric and metric not in {c["key"] for c in cols}:
+        alias, label, kind, _ = METRICS[metric]
+        cols.insert(1 if dim else 0, {"key": alias, "label": label.capitalize(), "kind": kind})
     return cols
 
 
@@ -221,25 +226,52 @@ def answer(db, question):
     # Design law: never rank people or works by fraud/corruption; no score is a finding of fraud.
     if intent["loaded"]:
         return _clarify(question, "This tool does not rank people or works by fraud or corruption — no score here is a finding of fraud. It surfaces review signals for human verification. Try a signal such as high-priority works, cost overruns, delays, duplicates, or settled-to-sanction ratio.")
+    if re.search(r"\b(predict\w*|forecast\w*|tomorrow|future)\b", question, re.I):
+        return _clarify(question, "Ask the data only summarizes the observed snapshot. For the experimental aggregate payment forecast and its limits, open Insights & forecast.")
+    detail_request = bool(re.search(r"\b(detail\w*|profile|information|overview|summary|about)\b", question, re.I))
+    matches = resolve_names(db, question, aliases=detail_request or (intent["metric_found"] and not intent["filters"].get("state")))
+    if len(matches) > 1:
+        result = _clarify(question, f"Found {len(matches)} matching entities. Choose the exact profile below; no entity was selected automatically.")
+        return {**result, "matches": matches, "caveat": "Names can repeat across cohorts and authorities. Each option uses its exact connected-data key."}
+    if len(matches) == 1:
+        entity = matches[0]
+        if detail_request or not intent["metric_found"]:
+            details = profile(db, entity["kind"], entity["key"])
+            return {"question": question, "entity": entity, "interpretation": "Exact local entity profile", "summary": f"Profile: {entity['name']}", "columns": _columns(None), "rows": [{**details["summary"], "settled_pct": (details["summary"]["settled_paise"] or 0) / details["summary"]["sanction_paise"] if details["summary"]["sanction_paise"] else None}], "sql": details["sql"], "params": details["params"], "row_count": 1, "caveat": details["note"]}
+        if entity["kind"] == "vendor":
+            return {**_clarify(question, "For this named vendor, open its profile for payment totals and connected works."), "matches": matches}
+        intent["clauses"].append({"ida": "ida_key = ?", "mp": "mp_key = ?"}[entity["kind"]])
+        intent["params"].append(entity["key"])
+        intent["described"].append("for " + entity["name"])
+        intent["aggregate"] = True
+        intent["dimension"] = None
+    if not intent["metric_found"]:
+        return _clarify(question, "No exact entity or supported metric was recognized. Try an authority name followed by 'details', or ask about works, delays, high-priority works, cost outliers, settled or pending payments.")
     metric, dim = intent["metric"], intent["dimension"]
     where = (" WHERE " + " AND ".join(intent["clauses"])) if intent["clauses"] else ""
     order_alias = METRICS[metric][0]
 
     if dim == "vendor":
+        if metric not in ("settled_paise", "pending_paise", "works"):
+            return _clarify(question, "Vendor profiles support work counts, settled payments and pending payments only. This requested metric is not available at vendor grain.")
         # Vendor_Features is a whole-extract profile with no state/cohort/FY columns.
         # Rather than silently ignore a filter the user asked for, refuse and explain.
         if intent["described"]:
             return _clarify(question, "Vendors cannot be filtered by state, cohort or financial year here — the vendor profile is over the whole extract. Ask e.g. \"top vendors by settled payments\" (unfiltered), or use the Work investigation queue filtered by state and open a work to see its vendor.")
         vm = metric if metric in ("settled_paise", "pending_paise", "works") else "settled_paise"
         vcol = {"settled_paise": "successful_payment_paise", "pending_paise": "pending_payment_paise", "works": "work_count"}[vm]
-        sql = f"SELECT vendor_name _dim, work_count works, successful_payment_paise settled_paise, pending_payment_paise pending_paise, mp_count, ida_count FROM Vendor_Features ORDER BY {vcol} {intent['direction']} LIMIT ?"
+        sql = f"SELECT vendor_name _dim, vendor_id _entity_key, work_count works, successful_payment_paise settled_paise, pending_payment_paise pending_paise, mp_count, ida_count FROM Vendor_Features ORDER BY {vcol} {intent['direction']}, vendor_id LIMIT ?"
         rows = [dict(r) for r in db.execute(sql, [intent["limit"]])]
         cols = [{"key": "_dim", "label": "Vendor", "kind": "text"}, {"key": "works", "label": "Works", "kind": "count"}, {"key": "settled_paise", "label": "Settled", "kind": "money"}, {"key": "pending_paise", "label": "In-progress", "kind": "money"}, {"key": "mp_count", "label": "MPs", "kind": "count"}, {"key": "ida_count", "label": "Authorities", "kind": "count"}]
         dirword = "highest" if intent["direction"] == "DESC" else "lowest"
         interp = f"Vendors by {METRICS[vm][1]} ({dirword} first), top {intent['limit']}."
-        return _package(question, interp, cols, rows, sql, [intent["limit"]], vm, METRICS[vm][2], DIMENSIONS["vendor"])
+        return _package(question, interp, cols, rows, sql, [intent["limit"]], vm, METRICS[vm][2], DIMENSIONS["vendor"], metric=vm)
 
     if dim == "month":
+        if metric not in ("settled_paise", "pending_paise") or any(not x.startswith("in ") for x in intent["described"]):
+            return _clarify(question, "Monthly queries support observed settled or pending payments, optionally filtered by state. Cohort, sanction-year and work-risk metrics cannot be applied to this monthly table.")
+        if re.search(r"\b(top|bottom|most|least|highest|lowest|best|worst)\b", question, re.I):
+            return _clarify(question, "Monthly payments are shown chronologically, not ranked. Ask for monthly settled or pending payments, optionally in a state.")
         # Monthly_Payments carries state, so a state filter is honoured; cohort/FY are not.
         st = intent["filters"].get("state")
         where_m = " WHERE state = ?" if st else ""
@@ -249,24 +281,24 @@ def answer(db, question):
         cols = [{"key": "_dim", "label": "Month", "kind": "text"}, {"key": "settled_paise", "label": "Settled", "kind": "money"}, {"key": "pending_paise", "label": "In progress", "kind": "money"}]
         unhonoured = [x for x in intent["described"] if not x.startswith("in ")]
         note = (" — note: " + ", ".join(unhonoured) + " not applied") if unhonoured else ""
-        return _package(question, f"Monthly settled and in-progress payments{(' in ' + st) if st else ''}{note}.", cols, rows, sql, params_m, "settled_paise", "money", DIMENSIONS["month"])
+        return _package(question, f"Monthly settled and in-progress payments{(' in ' + st) if st else ''}{note}.", cols, rows, sql, params_m, metric, "money", DIMENSIONS["month"], metric=metric)
 
     if intent["aggregate"]:
         sql = f"SELECT {WF_SELECT} FROM Work_Features{where}"
         row = dict(db.execute(sql, intent["params"]).fetchone())
-        cols = _columns(None)
+        cols = _columns(None, metric)
         aprefix = "" if intent["metric_found"] else "No specific metric recognised — showing works and totals. "
-        return _package(question, aprefix + "National total" + ((" " + ", ".join(intent["described"])) if intent["described"] else ""), cols, [row], sql, intent["params"], order_alias, METRICS[metric][2], None, described=intent["described"], metric=metric)
+        return _package(question, aprefix + ("Filtered total" if intent["clauses"] else "National total") + ((" " + ", ".join(intent["described"])) if intent["described"] else ""), cols, [row], sql, intent["params"], order_alias, METRICS[metric][2], None, described=intent["described"], metric=metric)
 
     gkey, disp = DIMENSIONS[dim][0], DIMENSIONS[dim][1]
     having = " HAVING COUNT(*) >= 20" if metric in ("settled_pct", "completion_rate", "mean_priority") else ""
-    sql = f"SELECT {disp} _dim, {WF_SELECT} FROM Work_Features{where} GROUP BY {gkey}{having} ORDER BY {order_alias} {intent['direction']}, works DESC LIMIT ?"
+    sql = f"SELECT {disp} _dim, {gkey} _entity_key, {WF_SELECT} FROM Work_Features{where} GROUP BY {gkey}{having} ORDER BY {order_alias} {intent['direction']}, works DESC, {gkey} LIMIT ?"
     rows = [dict(r) for r in db.execute(sql, [*intent["params"], intent["limit"]])]
     if dim == "cohort":
         labels = {"lok_sabha": "Lok Sabha", "rs_sitting": "Rajya Sabha (sitting)", "rs_retired": "Rajya Sabha (retired)"}
         for r in rows:
             r["_dim"] = labels.get(r["_dim"], r["_dim"])
-    cols = _columns(dim)
+    cols = _columns(dim, metric)
     dirword = "highest" if intent["direction"] == "DESC" else "lowest"
     prefix = "" if intent["metric_found"] else "No specific metric recognised — ranking by number of works (name a metric such as high-priority, delays, cost outliers, settled or pending amount, settled-to-sanction ratio). "
     interp = prefix + f"{DIMENSIONS[dim][3].title()} by {METRICS[metric][1]} ({dirword} first)" + ((", " + ", ".join(intent["described"])) if intent["described"] else "") + f", top {intent['limit']}."
@@ -290,9 +322,9 @@ def _package(question, interpretation, columns, rows, sql, params, order_alias, 
         "interpretation": interpretation,
         "summary": summary,
         "columns": columns,
-        "rows": [{**{c["key"]: r.get(c["key"]) for c in columns}} for r in rows],
+        "rows": [{**{c["key"]: r.get(c["key"]) for c in columns}, **({"_entity_key": str(r["_entity_key"]), "_entity_kind": {"ida_key":"ida", "mp_key":"mp", "vendor_id":"vendor", "state":"state"}[dim[0]]} if dim and dim[0] in ("ida_key","mp_key","vendor_id","state") and r.get("_entity_key") is not None else {})} for r in rows],
         "sql": re.sub(r"\s+", " ", sql).strip(),
         "params": [str(p) for p in params],
         "row_count": len(rows),
-        "caveat": "Descriptive aggregate of local Work_Features rows; a review signal, not a finding of fraud. Every value is reproducible from the SQL shown.",
+        "caveat": "Descriptive aggregate of the local table named in the SQL; a review signal, not a finding of fraud. Every value is reproducible from the SQL shown.",
     }

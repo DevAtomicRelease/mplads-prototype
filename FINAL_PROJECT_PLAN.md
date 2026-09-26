@@ -1,5 +1,8 @@
 # PS 26102 — MPLADS Anomaly, Fraud & Inefficiency Detection
 
+> Historical design proposal. For the implemented architecture, current snapshot,
+> validation limitations and rollout gates, use ARCHITECTURE.md and README.md.
+
 ## Final Project Plan: Architecture, Workflow, AI/ML, Tech Stack & Data Pipeline
 
 **Problem Statement:** SIH 2026 — PS 26102. *Development of an AI-powered system to detect anomalies, fraud, and inefficiencies in MPLAD Scheme implementation.*
