@@ -19,24 +19,24 @@ METRICS = {
     "high": ("high", "high-priority works", "count", False),
     "open_over_year": ("open_over_year", "works open beyond one year", "count", False),
     "no_payment_3m": ("no_payment_3m", "works with no payment after three months", "count", False),
-    "completed": ("completed", "reported-complete works (export membership)", "count", True),
+    "completed": ("completed", "works reported complete", "count", True),
     "sanctioned": ("sanctioned", "sanctioned works", "count", None),
-    "cost_outliers": ("cost_outliers", "high-cost-peer works", "count", False),
-    "duplicates": ("duplicates", "similar-work flags", "count", False),
+    "cost_outliers": ("cost_outliers", "works costing much more than similar earlier works", "count", False),
+    "duplicates": ("duplicates", "works with a near-identical description to another", "count", False),
     "paid_over": ("paid_over", "works with payments over sanction", "count", False),
     "completion_over": ("completion_over", "works with completion amount over sanction", "count", False),
     "march_rush": ("march_rush", "works with year-end (March) payment concentration", "count", False),
     "repeat_payments": ("repeat_payments", "works with repeated payment report rows", "count", False),
-    "completed_no_payment": ("completed_no_payment", "reported-complete works with no observed settled payment", "count", False),
+    "completed_no_payment": ("completed_no_payment", "works reported complete with no payment seen", "count", False),
     "avg_sanction": ("avg_sanction", "average sanctioned amount per work", "money", None),
     "pending_rec": ("pending_rec", "recommendations pending over 45 days", "count", False),
     "sanction_delay": ("sanction_delay", "works sanctioned over 45 days after recommendation", "count", False),
     "sanction_paise": ("sanction_paise", "sanctioned amount", "money", None),
-    "settled_paise": ("settled_paise", "settled (reported) payments", "money", None),
-    "pending_paise": ("pending_paise", "in-progress (pending) payments", "money", None),
-    "settled_pct": ("settled_pct", "settled-to-sanction ratio", "pct", True),
-    "completion_rate": ("completion_rate", "reported completion rate (export membership)", "pct", True),
-    "mean_priority": ("mean_priority", "mean review priority", "num", False),
+    "settled_paise": ("settled_paise", "amount paid (reported)", "money", None),
+    "pending_paise": ("pending_paise", "payments still in progress", "money", None),
+    "settled_pct": ("settled_pct", "share of sanctioned money paid", "pct", True),
+    "completion_rate": ("completion_rate", "share of sanctioned works reported complete", "pct", True),
+    "mean_priority": ("mean_priority", "average flag score", "num", False),
 }
 METRIC_WORDS = [
     # Specific multi-word signals first so generic words ("payment", "completed") cannot capture them.
@@ -263,7 +263,7 @@ def _fmt(kind, value):
 def _clarify(question, message):
     return {"question": question, "interpretation": "Not interpreted", "summary": message, "note": message,
             "columns": [], "rows": [], "sql": "", "params": [], "row_count": 0,
-            "caveat": "Ask for a review signal — high-priority works, delays, cost overruns, duplicates, settled-to-sanction ratio — by state, district authority, MP, activity or cohort."}
+            "caveat": "Try asking about high-priority works, delays, costs much higher than similar works, similar descriptions or the share of money paid — by state, district authority, MP, activity or house (Lok Sabha / Rajya Sabha)."}
 
 
 def answer(db, question):
@@ -271,46 +271,46 @@ def answer(db, question):
     intent = parse(question, states)
     # Design law: never rank people or works by fraud/corruption; no score is a finding of fraud.
     if intent["loaded"]:
-        return _clarify(question, "This tool does not rank people or works by fraud or corruption — no score here is a finding of fraud. It surfaces review signals for human verification. Try a signal such as high-priority works, cost overruns, delays, duplicates, or settled-to-sanction ratio.")
+        return _clarify(question, "This tool does not rank people or works by fraud or corruption — no score here is a finding of fraud. It only points to works a person should check. Try asking about high-priority works, delays, similar descriptions, or the share of money paid.")
     if re.search(r"\b(predict\w*|forecast\w*|tomorrow|future)\b", question, re.I):
-        return _clarify(question, "Ask the data only summarizes the observed snapshot. For the experimental aggregate payment forecast and its limits, open Insights & forecast.")
+        return _clarify(question, "Ask the data only describes the data as it is now; it does not predict. For a simple estimate of next month's total payments, open Insights & forecast.")
     detail_request = bool(re.search(r"\b(detail\w*|profile|information|overview|summary|about)\b", question, re.I))
     matches = resolve_names(db, question, aliases=detail_request or (intent["metric_found"] and not intent["filters"].get("state")))
     if len(matches) > 1:
         result = _clarify(question, f"Found {len(matches)} matching entities. Choose the exact profile below; no entity was selected automatically.")
-        return {**result, "matches": matches, "caveat": "Names can repeat across cohorts and authorities. Each option uses its exact connected-data key."}
+        return {**result, "matches": matches, "caveat": "The same name can appear more than once (for example in both houses). Each option is a different record."}
     if len(matches) == 1:
         entity = matches[0]
         if detail_request or not intent["metric_found"]:
             details = profile(db, entity["kind"], entity["key"])
-            return {"question": question, "entity": entity, "interpretation": "Exact local entity profile", "summary": f"Profile: {entity['name']}", "columns": _columns(None), "rows": [{**details["summary"], "settled_pct": (details["summary"]["settled_paise"] or 0) / details["summary"]["sanction_paise"] if details["summary"]["sanction_paise"] else None}], "sql": details["sql"], "params": details["params"], "row_count": 1, "caveat": details["note"]}
+            return {"question": question, "entity": entity, "interpretation": "Profile of the named authority, MP or vendor", "summary": f"Profile: {entity['name']}", "columns": _columns(None), "rows": [{**details["summary"], "settled_pct": (details["summary"]["settled_paise"] or 0) / details["summary"]["sanction_paise"] if details["summary"]["sanction_paise"] else None}], "sql": details["sql"], "params": details["params"], "row_count": 1, "caveat": details["note"]}
         if entity["kind"] == "vendor":
-            return {**_clarify(question, "For this named vendor, open its profile for payment totals and connected works."), "matches": matches}
+            return {**_clarify(question, "For a named vendor, open its profile to see its payments and works."), "matches": matches}
         intent["clauses"].append({"ida": "ida_key = ?", "mp": "mp_key = ?"}[entity["kind"]])
         intent["params"].append(entity["key"])
         intent["described"].append("for " + entity["name"])
         intent["aggregate"] = True
         intent["dimension"] = None
     if not intent["metric_found"]:
-        return _clarify(question, "No exact entity or supported metric was recognized. Try an authority name followed by 'details', or ask about works, delays, high-priority works, cost outliers, settled or pending payments.")
+        return _clarify(question, "Sorry, I could not match that to a name or a measure I know. Try a district authority name followed by 'details', or ask about works, delays, high-priority works, costs much higher than similar works, or payments made or still in progress.")
     fy = intent["filters"].get("fy")
     if fy:
         years = [r[0] for r in db.execute("SELECT DISTINCT sanction_fy FROM Work_Features WHERE sanction_fy IS NOT NULL ORDER BY 1")]
         if fy not in years:
-            return _clarify(question, f"That financial year is not in the connected data. Sanction years available: {', '.join(years)} (e.g. \"2024-25\"). Year filters apply to the sanction year of each work.")
+            return _clarify(question, f"That financial year is not in the connected data. Years available: {', '.join(years)} (you can type e.g. \"2024-25\"). The year means the year a work was sanctioned.")
     metric, dim = intent["metric"], intent["dimension"]
     if intent.get("averaged"):
-        intent["described"].append("totals shown — averages are supported only for sanctioned amount per work")
+        intent["described"].append("showing totals — averages are only available for the sanctioned amount per work")
     where = (" WHERE " + " AND ".join(intent["clauses"])) if intent["clauses"] else ""
     order_alias = METRICS[metric][0]
 
     if dim == "vendor":
         if metric not in ("settled_paise", "pending_paise", "works"):
-            return _clarify(question, "Vendor profiles support work counts, settled payments and pending payments only. This requested metric is not available at vendor grain.")
+            return _clarify(question, "For vendors, only the number of works, payments made and payments in progress are available — not that measure.")
         # Vendor_Features is a whole-extract profile with no state/cohort/FY columns.
         # Rather than silently ignore a filter the user asked for, refuse and explain.
         if intent["described"]:
-            return _clarify(question, "Vendors cannot be filtered by state, cohort or financial year here — the vendor profile is over the whole extract. Ask e.g. \"top vendors by settled payments\" (unfiltered), or use the Work investigation queue filtered by state and open a work to see its vendor.")
+            return _clarify(question, "Vendors cannot be filtered by state, house or year here — vendor totals cover all the data. Ask e.g. \"top vendors by payments\" without a filter, or use Work investigation filtered by state and open a work to see its vendor.")
         vm = metric if metric in ("settled_paise", "pending_paise", "works") else "settled_paise"
         vcol = {"settled_paise": "successful_payment_paise", "pending_paise": "pending_payment_paise", "works": "work_count"}[vm]
         sql = f"SELECT vendor_name _dim, vendor_id _entity_key, work_count works, successful_payment_paise settled_paise, pending_payment_paise pending_paise, mp_count, ida_count FROM Vendor_Features ORDER BY {vcol} {intent['direction']}, vendor_id LIMIT ?"
@@ -322,9 +322,9 @@ def answer(db, question):
 
     if dim == "month":
         if metric not in ("settled_paise", "pending_paise") or any(not x.startswith("in ") for x in intent["described"]):
-            return _clarify(question, "Monthly queries support observed settled or pending payments, optionally filtered by state. Cohort, sanction-year and work-risk metrics cannot be applied to this monthly table.")
+            return _clarify(question, "Month-by-month answers are only available for payments made or in progress, optionally for one state. House, year and flag measures are not available by month.")
         if re.search(r"\b(top|bottom|most|least|highest|lowest|best|worst)\b", question, re.I):
-            return _clarify(question, "Monthly payments are shown chronologically, not ranked. Ask for monthly settled or pending payments, optionally in a state.")
+            return _clarify(question, "Monthly payments are shown in date order, not ranked. Ask for monthly payments, optionally in one state.")
         # Monthly_Payments carries state, so a state filter is honoured; cohort/FY are not.
         st = intent["filters"].get("state")
         where_m = " WHERE state = ?" if st else ""
@@ -340,8 +340,8 @@ def answer(db, question):
         sql = f"SELECT {WF_SELECT} FROM Work_Features{where}"
         row = dict(db.execute(sql, intent["params"]).fetchone())
         cols = _columns(None, metric)
-        aprefix = "" if intent["metric_found"] else "No specific metric recognised — showing works and totals. "
-        return _package(question, aprefix + ("Filtered total" if intent["clauses"] else "National total") + ((" — " + ", ".join(intent["described"])) if intent["described"] else ""), cols, [row], sql, intent["params"], order_alias, METRICS[metric][2], None, described=intent["described"], metric=metric)
+        aprefix = "" if intent["metric_found"] else "No specific measure recognised — showing works and totals. "
+        return _package(question, aprefix + ("Total" if intent["clauses"] else "Total for India") + ((" — " + ", ".join(intent["described"])) if intent["described"] else ""), cols, [row], sql, intent["params"], order_alias, METRICS[metric][2], None, described=intent["described"], metric=metric)
 
     gkey, disp = DIMENSIONS[dim][0], DIMENSIONS[dim][1]
     kind = METRICS[metric][2]
@@ -364,7 +364,7 @@ def answer(db, question):
         scope = (" " + ", ".join(intent["described"])) if intent["described"] else " in the connected data"
         result["summary"] = f"None found: no works{scope} have {METRICS[metric][1].removeprefix('works with ')}, so there is nothing to rank."
         if metric in ("paid_over", "completion_over"):
-            result["summary"] += " The portal extract records no settled payment or completion amount above the sanctioned amount; the screen stays active and is tested on constructed cases."
+            result["summary"] += " In this data, no payment or final cost is above the sanctioned amount. The check stays switched on and was tested in the A/B test."
     return result
 
 
@@ -397,5 +397,5 @@ def _package(question, interpretation, columns, rows, sql, params, order_alias, 
         "sql": re.sub(r"\s+", " ", sql).strip(),
         "params": [str(p) for p in params],
         "row_count": len(rows),
-        "caveat": "Descriptive aggregate of the local table named in the SQL; a review signal, not a finding of fraud. Every value is reproducible from the SQL shown.",
+        "caveat": "A summary of the loaded data — a pointer for review, not a finding of fraud. Every number can be checked with the database query shown below.",
     }

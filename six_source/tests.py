@@ -554,7 +554,9 @@ class EndToEnd(unittest.TestCase):
             _, result = self._get("/api/ask?q=" + urllib.parse.quote(question))
             self.assertIn(expected, {c["key"] for c in result["columns"]})
         _, result = self._get("/api/ask?q=" + urllib.parse.quote("Vendors by pending payments"))
-        self.assertIn("pending", result["summary"])
+        # Ranked by in-progress (pending) payments, whatever the display wording.
+        self.assertIn("ORDER BY pending_payment_paise", result["sql"])
+        self.assertIn("in progress", result["summary"])
 
 
 def _reproducibility():
