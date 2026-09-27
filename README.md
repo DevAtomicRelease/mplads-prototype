@@ -191,6 +191,16 @@ disclosed beside the map; tables remain the authoritative source-labelled view.
 
 Source code is MIT licensed. Dataset inclusion does not establish redistribution
 rights. The runtime uses loopback, same-origin write checks, allow-listed jobs,
-read-only analytical SQLite and an independent review ledger. Never expose this
-unauthenticated prototype to the internet. No raw records or reports were published
-as part of this completion work.
+read-only analytical SQLite and an independent review ledger. Never expose the
+normal, writable copy to the internet. The only supported way to share it is the
+read-only demo mode below. No raw records or reports were published as part of
+this completion work.
+
+## 7. Share a free, read-only demo
+
+[deploy/README.md](deploy/README.md) gives two zero-cost, no-card options: a private
+Hugging Face Space (stable link, runs in the cloud) or a Cloudflare quick tunnel from
+your own computer (no account, data stays local). Any copy reachable beyond this
+computer is automatically read-only — no review saving, no maintenance tools, and a
+"Demo copy" banner — and a hosted copy verifies every sealed release file at startup.
+Keep demo links private: the app shows real MP names next to review flags.

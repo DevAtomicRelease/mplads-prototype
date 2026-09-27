@@ -96,7 +96,17 @@ API SQL is read-only and parameterized; the natural-language parser chooses boun
 templates rather than accepting arbitrary SQL or contacting an LLM. Security measures
 include loopback binding, Host validation, same-origin write checks, a CSP and an
 allow-list of maintenance actions. There is no officer authentication or authorization
-system. Do not bind the service to a public/LAN address or treat this as multi-tenant.
+system. Do not treat this as multi-tenant.
+
+Demo deployment: `serve.py --host/--allowed-host/--read-only` (or `MPLADS_*` environment
+variables). Binding beyond loopback or accepting any extra hostname forces read-only
+mode: review and job POSTs return 403, the UI hides those controls and shows a demo
+banner. Extra hostnames are exact names or a single-label wildcard (`*.trycloudflare.com`).
+A read-only server verifies the release with `releases.bundle_reason` at startup: every
+present sealed file must match the manifest, absent files must be declared omitted by
+`deploy/pack_release.py`, and the analysis code must match the manifest's code hashes.
+`deploy/space/` is the Hugging Face Docker Space; `deploy/tunnel.ps1` shares a local
+read-only copy through a Cloudflare quick tunnel. See `deploy/README.md`.
 
 ### Presentation and investigation modules
 

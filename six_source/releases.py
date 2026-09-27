@@ -123,3 +123,31 @@ def maintenance_lock(local=LOCAL):
                 import fcntl
                 fcntl.flock(stream, fcntl.LOCK_UN)
         stream.close()
+
+BUNDLE_NOTE = "demo_bundle.json"
+
+def bundle_reason(directory):
+    """Verify a packed (possibly slimmed) release once at startup.
+
+    Every sealed artifact that is present must match the release manifest, any
+    absent artifact must be declared omitted by the packer, and the analysis
+    code on disk must be the code recorded in the manifest. Returns '' if valid.
+    """
+    directory = Path(directory)
+    try:
+        manifest = json.loads((directory / "release_manifest.json").read_text(encoding="utf-8"))
+        note = directory / BUNDLE_NOTE
+        omitted = set(json.loads(note.read_text(encoding="utf-8")).get("omitted", [])) if note.is_file() else set()
+        for name, expected in manifest["artifacts"].items():
+            path = directory / name
+            if Path(name).name != name: return f"Unsafe artifact name: {name}"
+            if path.is_file():
+                if digest(path) != expected: return f"Artifact changed: {name}"
+            elif name not in omitted:
+                return f"Artifact missing and not declared omitted: {name}"
+        for name, expected in manifest["code"].items():
+            if Path(name).name != name or not (HERE / name).is_file() or digest(HERE / name) != expected:
+                return f"Analysis code differs from the release: {name}"
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return f"Unreadable release bundle: {exc}"
+    return ""

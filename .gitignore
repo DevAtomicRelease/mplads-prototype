@@ -106,3 +106,6 @@ PPT/.sih-build*/
 
 # Presentation decks are excluded pending a single corrected deck (contact info + architecture review)
 PPT/
+
+# Hosted-demo bundles are large, contain the sealed data, and are uploaded separately.
+deploy/build/
