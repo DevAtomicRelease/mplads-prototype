@@ -14,7 +14,7 @@ import sqlite3
 import nlq
 from entities import profile
 from common import sha
-from releases import resolve_active, release_version, integrity_reason
+from releases import resolve_active, release_version, integrity_reason, bundle_reason
 from urllib.parse import parse_qs, unquote, urlsplit
 
 WORK_KEY=re.compile(r"[a-z_]+:[a-z0-9]*:\d+")
@@ -140,13 +140,24 @@ def page(params):
     return size,offset
 
 
-def make_server(port=8766,local=LOCAL,review_db=None,directory=None,verify=True):
+LOOPBACK={"127.0.0.1","localhost","::1"}
+
+
+def make_server(port=8766,local=LOCAL,review_db=None,directory=None,verify=True,host="127.0.0.1",allowed_hosts=(),read_only=False):
+    allowed={h.strip().lower() for h in allowed_hosts if h and h.strip()}
+    # Anything reachable beyond this computer is a demo copy: never accept writes or jobs there.
+    exposed=host not in LOOPBACK or bool(allowed)
+    read_only=read_only or exposed
     active=resolve_active(local)
     meta=json.loads((active/"audit.json").read_text(encoding="utf-8"))
     if not meta.get("all_checks_passed"):raise ValueError("Build is not verified")
     if verify:
         reason=stale_reason(meta) or integrity_reason(active)
         if reason:raise ValueError(f"Refusing to serve a stale build: {reason}. Re-run build.py.")
+    if read_only:
+        # A demo copy ships without the source files, so verify the packed release itself once.
+        reason=bundle_reason(active)
+        if reason:raise ValueError(f"Refusing to serve this release bundle: {reason}")
     review_db=review_db or local/"reviews.sqlite3"
     review_db.parent.mkdir(parents=True,exist_ok=True)
     with connect(review_db,False) as db:
@@ -155,8 +166,9 @@ def make_server(port=8766,local=LOCAL,review_db=None,directory=None,verify=True)
         columns={r[1] for r in db.execute("PRAGMA table_info(reviews)")}
         for name,default in (("owner",""),("due_date",""),("status","Open")):
             if name not in columns:db.execute(f"ALTER TABLE reviews ADD COLUMN {name} TEXT NOT NULL DEFAULT '{default}'")
-    server=ThreadingHTTPServer(("127.0.0.1",port),partial(Handler,directory=str(directory or ROOT/"mplads-prototype/dist")))
+    server=ThreadingHTTPServer((host,port),partial(Handler,directory=str(directory or ROOT/"mplads-prototype/dist")))
     server.local,server.review_db,server.meta=local,review_db,meta
+    server.allowed_hosts,server.read_only,server.exposed=allowed,read_only,exposed
     server.version=release_version(active,meta)
     return server
 
@@ -167,7 +179,16 @@ class Handler(SimpleHTTPRequestHandler):
         pass
 
     def allowed_host(self):
-        return self.headers.get("Host","") in {f"127.0.0.1:{self.server.server_port}",f"localhost:{self.server.server_port}"}
+        host=self.headers.get("Host","").strip().lower()
+        if host in {f"127.0.0.1:{self.server.server_port}",f"localhost:{self.server.server_port}"}:return True
+        # Configured public names (e.g. a Hugging Face Space or tunnel), with or without a port.
+        # "*.example.com" accepts any single subdomain name of example.com (random tunnel names).
+        name=host.rsplit(":",1)[0] if ":" in host else host
+        for allowed in self.server.allowed_hosts:
+            if allowed.startswith("*."):
+                if name.endswith(allowed[1:]) and name.count(".")==allowed.count(".") and re.fullmatch(r"[a-z0-9-]+",name[:-len(allowed)+1]):return True
+            elif host==allowed or name==allowed:return True
+        return False
 
     def end_headers(self):
         self.send_header("X-Content-Type-Options","nosniff")
@@ -204,8 +225,12 @@ class Handler(SimpleHTTPRequestHandler):
         if test_report and test_report.get("release_version")!=version:test_report=None
         with connect(self.server.review_db) as db:
             reviews=db.execute("SELECT COUNT(*) FROM reviews WHERE version=?",[version]).fetchone()[0]
-        reason=stale_reason(m) or integrity_reason(local)
+        if self.server.read_only:
+            reason="Source files are not included in this demo copy; the release files were verified against the sealed manifest at startup."
+        else:
+            reason=stale_reason(m) or integrity_reason(local)
         return {
+            "read_only":self.server.read_only,
             "version":version,"active_release":local.name,"as_of":m.get("as_of"),"cohorts":m.get("cohorts"),"scope":m.get("scope"),
             "all_checks_passed":m.get("all_checks_passed"),"checks":m.get("checks"),
             "source_fresh":not reason,"stale_reason":reason,
@@ -249,8 +274,8 @@ class Handler(SimpleHTTPRequestHandler):
         url=urlsplit(self.path);route=unquote(url.path);params=parse_qs(url.query)
         try:dd,meta,version=self.rel()
         except (OSError,ValueError,KeyError):return self.reply({"error":"Active release unavailable. Run START.cmd to prepare a verified release."},503)
-        if route=="/api/health":return self.reply({"application":"MPLADS Six Source","version":version,"localOnly":True})
-        if route=="/api/meta":return self.reply({**meta,"review_version":version})
+        if route=="/api/health":return self.reply({"application":"MPLADS Six Source","version":version,"localOnly":not self.server.exposed,"readOnly":self.server.read_only})
+        if route=="/api/meta":return self.reply({**meta,"review_version":version,"read_only":self.server.read_only})
         if route=="/api/status":return self.reply(self.status())
         if route=="/api/jobs":
             with JOB_LOCK:jobs=[job_view(j,full=True) for j in sorted(JOBS.values(),key=lambda x:x["created"],reverse=True)]
@@ -370,7 +395,9 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         self._request_release=None
         origin=self.headers.get("Origin","")
-        if not self.allowed_host() or origin!=f'http://{self.headers.get("Host", "")}':return self.reply({"error":"Local same-origin write required"},403)
+        if not self.allowed_host():return self.reply({"error":"Local same-origin write required"},403)
+        if self.server.read_only:return self.reply({"error":"This is a read-only demo copy. Saving reviews and running tools are turned off."},403)
+        if origin!=f'http://{self.headers.get("Host", "")}':return self.reply({"error":"Local same-origin write required"},403)
         path=urlsplit(self.path).path
         if path=="/api/jobs":
             try:
@@ -407,11 +434,17 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__=="__main__":
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument("--port",type=int,default=8766)
+    import os
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument("--port",type=int,default=int(os.environ.get("MPLADS_PORT","8766")))
     parser.add_argument("--no-verify",action="store_true",help="Skip the stale-build source-hash check (e.g. serving a prebuilt local without the Dataset present)")
+    parser.add_argument("--host",default=os.environ.get("MPLADS_HOST","127.0.0.1"),help="Bind address. Anything other than loopback forces read-only mode.")
+    parser.add_argument("--allowed-host",action="append",default=[h for h in os.environ.get("MPLADS_ALLOWED_HOSTS","").split(",") if h.strip()],help="Extra public hostname to accept (repeatable), e.g. a Space or tunnel name. Forces read-only mode.")
+    parser.add_argument("--read-only",action="store_true",default=os.environ.get("MPLADS_READ_ONLY","")=="1",help="Serve a read-only demo copy: no review saving, no maintenance jobs.")
+    parser.add_argument("--local",type=Path,default=Path(os.environ["MPLADS_LOCAL"]) if os.environ.get("MPLADS_LOCAL") else LOCAL,help="Directory holding active_release.json (releases/ is its sibling).")
     args=parser.parse_args()
-    server=make_server(args.port,verify=not args.no_verify)
-    print(f"MPLADS Six Source: http://127.0.0.1:{server.server_port}/",flush=True)
+    server=make_server(args.port,local=args.local,verify=not args.no_verify,host=args.host,allowed_hosts=args.allowed_host,read_only=args.read_only)
+    shown="127.0.0.1" if args.host in ("0.0.0.0","::") else args.host
+    print(f"MPLADS Six Source: http://{shown}:{server.server_port}/"+(" (read-only demo copy)" if server.read_only else ""),flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass
     finally:server.server_close()

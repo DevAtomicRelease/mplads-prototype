@@ -1,4 +1,10 @@
-import { StrictMode, useEffect, useState } from 'react';
+import {
+  StrictMode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 import { EntityProfile } from './entity-profile';
 import { IndiaMap } from './india-map';
 import { ruleText } from '../lib/plain-text';
@@ -135,6 +141,8 @@ const LIFECYCLE_LABEL: Record<string, string> = {
   'Reported complete': 'Reported complete',
 };
 const life = (v: unknown) => LIFECYCLE_LABEL[String(v)] ?? display(v);
+// True when the server is a hosted, read-only demo copy (no review saving or tools).
+const ReadOnly = createContext(false);
 // Plain-language version of the release's evidence limits. The exact original
 // sentences stay available under “Exact wording”.
 const PLAIN_LIMITS = [
@@ -399,6 +407,7 @@ function WorkEvidence({
     revision,
   );
   const w = detail.data?.work;
+  const readOnly = useContext(ReadOnly);
   return (
     <Sheet
       open={!!id}
@@ -641,7 +650,13 @@ function WorkEvidence({
                 </p>
               )}
               <h3>Record your review</h3>
-              {reviews.data && (
+              {readOnly && (
+                <p className="quiet">
+                  This is a read-only demo copy, so reviews cannot be saved
+                  here. Run the app on your own computer to record reviews.
+                </p>
+              )}
+              {!readOnly && reviews.data && (
                 <ReviewForm
                   key={reviews.data.history.at(-1)?.id ?? 'new'}
                   workId={id!}
@@ -2703,8 +2718,16 @@ function StatusTools() {
             />
             <Metric
               label="Source files unchanged"
-              value={s.source_fresh ? 'Yes' : 'CHANGED'}
-              note={s.source_fresh ? 'fingerprints match the build' : s.stale_reason}
+              value={
+                s.read_only ? 'Not on this server' : s.source_fresh ? 'Yes' : 'CHANGED'
+              }
+              note={
+                s.read_only
+                  ? 'release files verified at startup'
+                  : s.source_fresh
+                    ? 'fingerprints match the build'
+                    : s.stale_reason
+              }
             />
           </div>
 
@@ -2849,14 +2872,14 @@ function StatusTools() {
               <div>
                 <h2>Tools — run checks and create files</h2>
                 <p>
-                  Each button starts a task on this computer, which can take a
-                  few minutes. Only one task runs at a time. After a new data
-                  version is switched on, reload the other pages.
+                  {s.read_only
+                    ? 'Turned off in this read-only demo copy. Run the app on your own computer to use these tools.'
+                    : 'Each button starts a task on this computer, which can take a few minutes. Only one task runs at a time. After a new data version is switched on, reload the other pages.'}
                 </p>
               </div>
             </div>
             <div style={{ padding: '4px 20px 16px' }}>
-              {available.map((a: Row) => (
+              {!s.read_only && available.map((a: Row) => (
                 <JobControl
                   key={a.name}
                   name={a.name}
@@ -3067,6 +3090,7 @@ function StatusTools() {
 
 function App() {
   const meta = useData<Row>('/api/meta');
+  const readOnly = !!meta.data?.read_only;
   const [view, setView] = useState('overview');
   useEffect(() => {
     // A new workspace page should begin with its title and explanation.
@@ -3109,6 +3133,7 @@ function App() {
   const [desc, eyebrow] = HEAD[view];
   const label = NAV.find((n) => n[0] === view)?.[1] || '';
   return (
+    <ReadOnly.Provider value={readOnly}>
     <SidebarProvider
       style={{ '--sidebar-width': '15.5rem' } as React.CSSProperties}
     >
@@ -3167,6 +3192,13 @@ function App() {
           </div>
         </header>
         <main className="main-content">
+          {readOnly && (
+            <div className="demo-banner" role="note">
+              <strong>Demo copy · read-only.</strong> Review signals, not
+              findings of fraud. Saving reviews and running tools are turned
+              off here.
+            </div>
+          )}
           <div className="page-heading">
             <div>
               <p className="eyebrow">{eyebrow}</p>
@@ -3252,6 +3284,7 @@ function App() {
         />
       </SidebarInset>
     </SidebarProvider>
+    </ReadOnly.Provider>
   );
 }
 

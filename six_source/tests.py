@@ -559,6 +559,80 @@ class EndToEnd(unittest.TestCase):
         self.assertIn("in progress", result["summary"])
 
 
+class DeployMode(unittest.TestCase):
+    """Hosted demo copies: exact host allow-list, forced read-only, verified bundle."""
+    @classmethod
+    def setUpClass(cls):
+        if not (LOCAL / "mplads.sqlite3").is_file() and not (LOCAL / "active_release.json").is_file():
+            raise unittest.SkipTest("Run build.py first")
+        import threading, serve, tempfile
+        cls.temp=tempfile.TemporaryDirectory(prefix="mplads-deploy-")
+        cls.server=serve.make_server(port=0,local=LOCAL,review_db=Path(cls.temp.name)/"reviews.sqlite3",verify=False,allowed_hosts=["demo.example.org","*.trycloudflare.com"])
+        cls.port=cls.server.server_port
+        threading.Thread(target=cls.server.serve_forever,daemon=True).start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown();cls.server.server_close();cls.temp.cleanup()
+
+    def _req(self,path,host,method="GET",body=None,origin=None):
+        import http.client
+        conn=http.client.HTTPConnection("127.0.0.1",self.port,timeout=10)
+        headers={"Host":host}
+        if body is not None:headers["Content-Type"]="application/json"
+        if origin:headers["Origin"]=origin
+        conn.request(method,path,body=json.dumps(body).encode() if body is not None else None,headers=headers)
+        r=conn.getresponse();data=r.read();conn.close()
+        return r.status,(json.loads(data) if data[:1] in (b"{",b"[") else data)
+
+    def test_exposure_forces_read_only(self):
+        self.assertTrue(self.server.read_only)
+        s,meta=self._req("/api/meta","demo.example.org");self.assertEqual(s,200);self.assertTrue(meta["read_only"])
+        s,health=self._req("/api/health","demo.example.org");self.assertFalse(health["localOnly"]);self.assertTrue(health["readOnly"])
+        s,status=self._req("/api/status","demo.example.org");self.assertTrue(status["read_only"])
+
+    def test_host_allow_list(self):
+        for host in ("demo.example.org","demo.example.org:443","abc-123.trycloudflare.com",f"127.0.0.1:{self.port}"):
+            self.assertEqual(self._req("/api/health",host)[0],200,host)
+        for host in ("evil.example","demo.example.org.evil.example","trycloudflare.com","a.b.trycloudflare.com","eviltrycloudflare.com",""):
+            self.assertEqual(self._req("/api/health",host)[0],403,host)
+
+    def test_writes_and_jobs_are_refused(self):
+        for path,body in (("/api/reviews",{"key":"x","note":"n","outcome":"Needs evidence"}),("/api/jobs",{"name":"tests"})):
+            for origin in ("https://demo.example.org","http://demo.example.org"):
+                status,payload=self._req(path,"demo.example.org","POST",body,origin)
+                self.assertEqual(status,403);self.assertIn("read-only",payload["error"])
+
+    def test_loopback_only_server_stays_writable(self):
+        import serve, tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            s=serve.make_server(port=0,local=LOCAL,review_db=Path(tmp)/"r.sqlite3",verify=False)
+            try:self.assertFalse(s.read_only);self.assertFalse(s.exposed)
+            finally:s.server_close()
+            s=serve.make_server(port=0,local=LOCAL,review_db=Path(tmp)/"r2.sqlite3",verify=False,host="0.0.0.0")
+            try:self.assertTrue(s.read_only)
+            finally:s.server_close()
+
+    def test_bundle_check(self):
+        import tempfile, releases
+        with tempfile.TemporaryDirectory() as tmp:
+            d=Path(tmp)
+            (d/"a.json").write_text("{}",encoding="utf-8");(d/"big.csv").write_text("x\n1\n",encoding="utf-8")
+            code={n:releases.digest(releases.HERE/n) for n in releases.CODE_FILES}
+            arts={"a.json":releases.digest(d/"a.json"),"big.csv":releases.digest(d/"big.csv")}
+            (d/"release_manifest.json").write_text(json.dumps({"schema":1,"artifacts":arts,"code":code}),encoding="utf-8")
+            self.assertEqual(releases.bundle_reason(d),"")
+            (d/"big.csv").unlink()
+            self.assertIn("not declared omitted",releases.bundle_reason(d))
+            (d/releases.BUNDLE_NOTE).write_text(json.dumps({"omitted":["big.csv"]}),encoding="utf-8")
+            self.assertEqual(releases.bundle_reason(d),"")
+            (d/"a.json").write_text('{"tampered":1}',encoding="utf-8")
+            self.assertIn("Artifact changed",releases.bundle_reason(d))
+            (d/"a.json").write_text("{}",encoding="utf-8")
+            (d/"release_manifest.json").write_text(json.dumps({"schema":1,"artifacts":arts,"code":{**code,"build.py":"0"*64}}),encoding="utf-8")
+            self.assertIn("Analysis code differs",releases.bundle_reason(d))
+
+
 def _reproducibility():
     import tempfile, subprocess
     from common import sha
