@@ -15,7 +15,8 @@ ENV HOME=/home/user \
 WORKDIR /home/user/app
 COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
-COPY --chown=user start.py .
+# start.py, plus the data bundle if it was uploaded into the Space itself.
+COPY --chown=user . .
 
 EXPOSE 7860
 CMD ["python", "start.py"]
