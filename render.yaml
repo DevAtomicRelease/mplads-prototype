@@ -1,0 +1,20 @@
+# Render Blueprint: read-only MPLADS-GUARD demo on Render's free web service.
+# The image comes from deploy/space; the data bundle is downloaded at startup from
+# a private GitHub release (see deploy/README.md, "Option C — Render").
+services:
+  - type: web
+    name: mplads-demo
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./deploy/space/Dockerfile
+    dockerContext: ./deploy/space
+    autoDeploy: false
+    envVars:
+      - key: MPLADS_BUNDLE_GITHUB
+        value: DevAtomicRelease/mplads-prototype@demo-data
+      - key: MPLADS_BUNDLE_SHA256
+        value: 177e18628516a1f7c9923f2c31be9aee8526c8eb9e613cd7c8748d13b81fbc54
+      - key: GITHUB_TOKEN
+        sync: false # entered by the repository owner in the Render dashboard

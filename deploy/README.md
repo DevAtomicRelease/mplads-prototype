@@ -113,3 +113,32 @@ the window or press Ctrl+C to stop sharing. Keep the computer awake during demos
 - The two large CSV downloads (all works, all payments) show "not generated" in the
   demo; every screen, chart, query and the Excel workbook still work.
 - There are no user log-ins. Privacy comes from a private Space or an unshared link.
+
+---
+
+## Option C — Render free web service (stable link, laptop can be off)
+
+Free, no card. Render's free web services **sleep after 15 minutes without
+visitors**; the next visit wakes it in about a minute or two (it re-downloads and
+re-verifies the data bundle each time). Open the link a couple of minutes before a demo.
+Memory use measured locally peaks around 110 MB, well inside the free tier.
+
+1. **Upload the bundle as a private GitHub release asset.** On GitHub: Releases →
+   *Draft a new release* → tag `demo-data` → attach
+   `deploy\build\mplads-demo-bundle.tar.gz` → publish. The repository is private, so
+   the asset is private too. The data never enters git history.
+2. **Create a read-only GitHub token** (you do this yourself): Settings → Developer
+   settings → Fine-grained tokens → *Generate new token* → only this repository →
+   Repository permissions → **Contents: Read-only**. Copy it.
+3. **Create the Render service:** sign in at <https://dashboard.render.com> with
+   GitHub, allow access to this repository, then New → **Blueprint** → pick this
+   repository. Render reads `render.yaml` and asks for `GITHUB_TOKEN`; paste the
+   token there. Everything else is preset (free plan, Singapore region, `main` branch,
+   bundle tag and checksum).
+4. Deploy. The log shows `Bundle checksum matches` and
+   `MPLADS Six Source: … (read-only demo copy)`. The link is
+   `https://mplads-demo.onrender.com` (or a similar name Render assigns).
+
+**Updating the data:** run `pack_release.py`, replace the asset on the `demo-data`
+release, update `MPLADS_BUNDLE_SHA256` in `render.yaml` (and in Render's
+environment), then *Manual Deploy*.
