@@ -2,6 +2,7 @@
 
 1. Get the demo bundle made by deploy/pack_release.py, from one of:
      MPLADS_BUNDLE_PATH  a file already inside the container, or
+     mplads-demo-bundle.tar.gz next to this script (uploaded into the Space), or
      MPLADS_BUNDLE_REPO  a (private) Hugging Face dataset repo, read with HF_TOKEN, or
      MPLADS_BUNDLE_URL   any direct HTTPS link.
 2. If MPLADS_BUNDLE_SHA256 is set, refuse a bundle whose checksum differs.
@@ -32,6 +33,10 @@ def fetch() -> Path:
     local = os.environ.get("MPLADS_BUNDLE_PATH")
     if local:
         return Path(local)
+    beside = HERE / BUNDLE_NAME  # simplest setup: bundle uploaded into the (private) Space itself
+    if beside.is_file():
+        log("Using the bundle stored in this Space.")
+        return beside
     repo = os.environ.get("MPLADS_BUNDLE_REPO")
     url = os.environ.get("MPLADS_BUNDLE_URL") or (f"https://huggingface.co/datasets/{repo}/resolve/main/{BUNDLE_NAME}" if repo else "")
     if not url:

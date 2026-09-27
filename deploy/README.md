@@ -1,10 +1,14 @@
 # Free, read-only demo deployment
 
-Two zero-cost ways to show MPLADS-GUARD to others. Neither needs a credit card.
+Two ways to show MPLADS-GUARD to others. **The Cloudflare tunnel (Option B) is the
+zero-cost, no-card option and has been tested end to end.** Hugging Face now lists
+Docker Spaces as a paid option (checked 27 September 2026), so Option A is kept for
+anyone with a paid Space.
 
 | | Hugging Face Space | Cloudflare quick tunnel |
 |---|---|---|
-| Runs on | Hugging Face's free CPU (2 vCPU, 16 GB) | Your own computer |
+| Cost | Paid Docker Space | Free |
+| Runs on | Hugging Face hardware | Your own computer |
 | Account | Free Hugging Face account (email only) | None |
 | Link | Stable `https://<user>-<space>.hf.space` | New random `https://….trycloudflare.com` each time |
 | Availability | Sleeps after ~48 h without visitors; first visit then takes 1–2 min | Only while your computer and the script are running |
@@ -19,7 +23,12 @@ the people who need it).
 
 ---
 
-## Option A — Hugging Face Space (hosted, stable link)
+## Option A — Hugging Face Space (hosted, stable link; paid)
+
+**Simplest setup:** skip steps 2–3 below. Upload `mplads-demo-bundle.tar.gz` into the
+**private** Space itself, next to `start.py`. `start.py` uses a bundle stored beside it,
+so no dataset repo or access token is needed. Keep the Space private, because the
+bundle holds the data.
 
 ### 1. Make the demo bundle (on your computer)
 
