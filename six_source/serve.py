@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -34,6 +35,7 @@ def stale_reason(meta, dataset=None):
 
 ROOT=Path(__file__).resolve().parents[1]
 LOCAL=Path(__file__).parent/"local"
+BIND_HOST=os.getenv("MPLADS_BIND_HOST","127.0.0.1")
 SORTS={"priority_score","sanction_amount_paise","successful_payment_paise","sanction_age_days","isolation_percentile","work_id"}
 SIGNALS={"pending_recommendation_45d_flag","sanction_delay_45d_flag","open_over_one_year_flag","no_payment_three_months_flag","paid_over_sanction_flag","completion_over_sanction_flag","repeat_payment_report_flag","march_rush_flag","high_cost_peer_flag","high_similarity_review_flag","dbscan_outlier_flag","completion_without_payment_flag","description_changed_flag","recommendation_missing_flag"}
 OUTCOMES={"Needs evidence","Expected variation","Data issue","Substantiated issue"}
@@ -145,8 +147,9 @@ LOOPBACK={"127.0.0.1","localhost","::1"}
 
 def make_server(port=8766,local=LOCAL,review_db=None,directory=None,verify=True,host="127.0.0.1",allowed_hosts=(),read_only=False):
     allowed={h.strip().lower() for h in allowed_hosts if h and h.strip()}
+    bind_host = host or BIND_HOST
     # Anything reachable beyond this computer is a demo copy: never accept writes or jobs there.
-    exposed=host not in LOOPBACK or bool(allowed)
+    exposed=bind_host not in LOOPBACK or bool(allowed)
     read_only=read_only or exposed
     active=resolve_active(local)
     meta=json.loads((active/"audit.json").read_text(encoding="utf-8"))
@@ -166,7 +169,7 @@ def make_server(port=8766,local=LOCAL,review_db=None,directory=None,verify=True,
         columns={r[1] for r in db.execute("PRAGMA table_info(reviews)")}
         for name,default in (("owner",""),("due_date",""),("status","Open")):
             if name not in columns:db.execute(f"ALTER TABLE reviews ADD COLUMN {name} TEXT NOT NULL DEFAULT '{default}'")
-    server=ThreadingHTTPServer((host,port),partial(Handler,directory=str(directory or ROOT/"mplads-prototype/dist")))
+    server=ThreadingHTTPServer((bind_host,port),partial(Handler,directory=str(directory or ROOT/"mplads-prototype/dist")))
     server.local,server.review_db,server.meta=local,review_db,meta
     server.allowed_hosts,server.read_only,server.exposed=allowed,read_only,exposed
     server.version=release_version(active,meta)
